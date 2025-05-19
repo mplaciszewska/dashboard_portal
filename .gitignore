@@ -1,0 +1,26 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# React app inside dashboard-portal/
+dashboard-portal/node_modules/
+dashboard-portal/build/
+dashboard-portal/.pnp
+dashboard-portal/pnp.js
+
+# Environment files
+dashboard-portal/.env*
+dashboard-portal/.DS_Store
+
+# Test and logs
+dashboard-portal/coverage/
+dashboard-portal/npm-debug.log*
+dashboard-portal/yarn-debug.log*
+dashboard-portal/yarn-error.log*
+
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

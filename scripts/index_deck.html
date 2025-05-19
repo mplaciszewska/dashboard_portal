@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<head>
+  <title>DeckGL GeoJSON</title>
+  <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css' rel='stylesheet' />
+  
+  <style>
+    body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+    }
+    .deck-tooltip {
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      position: absolute;
+      padding: 6px;
+      margin: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const { DeckGL, GeoJsonLayer } = deck;
+    const apiUrl = 'http://localhost:8000/api/zdjecia';
+    const limit = 500000;
+    let skip = 0;
+    let allFeatures = [];
+
+    async function loadData() {
+      try {
+        const response = await fetch(`${apiUrl}?skip=${skip}&limit=${limit}`);
+        const data = await response.json();
+
+        if (data.features.length === 0) {
+          console.log('Brak danych do załadowania.');
+          return;
+        }
+
+        allFeatures = allFeatures.concat(data.features);
+
+        const geojsonLayer = new GeoJsonLayer({
+          id: 'my_layer',
+          data: {
+            type: "FeatureCollection",
+            features: allFeatures
+          },
+          opacity: 0.9,
+          stroked: false,
+          filled: true,
+          extruded: false,
+          wireframe: false,
+          fp64: true,
+          pointRadiusMinPixels: 2,
+          getFillColor: [100, 150, 255],
+          getLineColor: [255, 255, 255],
+          pickable: true
+        });
+
+        if (!window.deckInstance) {
+          window.deckInstance = new DeckGL({
+            mapStyle: 'https://deck.gl/mapstyle/deck-dark.json',
+            initialViewState: {
+              latitude: 52,
+              longitude: 19,
+              zoom: 5,
+              maxZoom: 16,
+              pitch: 0
+            },
+            controller: true,
+            layers: [geojsonLayer],
+          });
+        } else {
+          window.deckInstance.setProps({
+            layers: [geojsonLayer],
+          });
+        }
+
+        skip += limit;
+
+        loadData();
+      } catch (error) {
+        console.error('Błąd podczas pobierania danych:', error);
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
