@@ -24,7 +24,7 @@ def sanitize_json(obj):
 @router.get("/api/zdjecia")
 def get_zdjecia(skip: int = 0, limit: int = 500000):
     try:
-        conn = psycopg2.connect("dbname=<> user=postgres password=<> host=localhost port=<>")
+        conn = psycopg2.connect("dbname=praca_inzynierska_db user=postgres password=325699 host=localhost port=5433")
         cur = conn.cursor()
         cur.execute("""
             SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, numer_zdjecia, rok_wykonania

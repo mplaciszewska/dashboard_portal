@@ -1,0 +1,11 @@
+.chart2-container {
+    background: 'white';
+    padding: 1rem;
+    /* margin: 1rem;
+    margin-top: 0; */
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    font-size: 16px;
+    height: 370px;
+    background-color: white;
+}

@@ -4,24 +4,25 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
-import MapboxDraw from '@mapbox/mapbox-gl-draw';
-import { useFetchPointsData } from './hooks/useFetchPointsData';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { useDrawPolygon } from './hooks/useDrawPolygon';
-import { useFilterFeaturesByPolygon } from './hooks/useFilterFeaturesByPolygon';
+import { ScreenGridLayer } from '@deck.gl/aggregation-layers';
 import './MapComponent.css';
 
 
-function MapComponent() {
+function MapComponent({ features, filteredFeatures, onPolygonChange }) {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
-  const drawRef = useRef(null);
-
-  const features = useFetchPointsData({ limit: 500000 });
   const drawnPolygon = useDrawPolygon(mapRef.current);
-  const filteredFeatures = useFilterFeaturesByPolygon(features, drawnPolygon);
+  const [zoomLevel, setZoomLevel] = useState(5);
+  const [hoverInfo, setHoverInfo] = useState(null);
+
+  useEffect(() => {
+    if (onPolygonChange) {
+      onPolygonChange(drawnPolygon);
+    }
+  }, [drawnPolygon, onPolygonChange]);
 
   const colorPalette = [
     [35, 104, 123, 100],
@@ -40,24 +41,19 @@ function MapComponent() {
     const range = maxYear - minYear + 1;
   
     if (year < minYear || year > maxYear || isNaN(year)) {
-      return [200, 200, 200, 180]; // szary jako kolor domyślny dla nieprawidłowych lat
+      return [200, 200, 200, 180];
     }
-  
-    // Obliczamy indeks w zakresie 0..colorPalette.length - 1
-    const normalized = (year - minYear) / range; // od 0 do <1
+
+    const normalized = (year - minYear) / range;
     let index = Math.floor(normalized * colorPalette.length);
   
-    // Jeśli year == maxYear, indeks może być równy długości, więc ograniczamy
     if (index >= colorPalette.length) index = colorPalette.length - 1;
-  
-    // Odwracamy indeks, żeby wyższe lata miały kolor z początku palety
+
     const reversedIndex = colorPalette.length - 1 - index;
   
     return [...colorPalette[reversedIndex], 180];
   }
-  
 
-  // Inicjalizacja mapy
   useEffect(() => {
     const map = new maplibregl.Map({
       container: mapContainer.current,
@@ -74,11 +70,14 @@ function MapComponent() {
       const deckOverlay = new MapboxOverlay({
         interleaved: true,
         layers: [],
+        
       });
       overlayRef.current = deckOverlay;
       map.addControl(deckOverlay);
+    });
 
-      
+    map.on('zoom', () => {
+      setZoomLevel(map.getZoom());
     });
 
     return () => {
@@ -86,27 +85,64 @@ function MapComponent() {
     };
   }, []);
 
-
-  // Aktualizacja warstwy Deck.GL na mapie
   useEffect(() => {
     if (!overlayRef.current) return;
-
-    const layer = new ScatterplotLayer({
-      id: 'deckgl-circle',
-      data: filteredFeatures,
-      getPosition: d => d.geometry.coordinates,
-      radiusMinPixels: 1.5,
-      radiusScale: 2,
-      getFillColor: d => getColorForYear(d.properties.rok_wykonania),
-      pickable: false,
-    });
-
+  
+    let layer;
+  
+    if (zoomLevel < 7.5) {
+      layer = new ScreenGridLayer({
+        id: 'screen-grid-layer',
+        data: filteredFeatures,
+        getPosition: d => d.geometry.coordinates,
+        cellSizePixels: 15,
+        getWeight: () => 1,
+        colorRange: [
+          [255, 255, 204],
+          [161, 218, 180],
+          [65, 182, 196],
+          [44, 127, 184],
+          [37, 52, 148],
+        ],
+        opacity: 0.8,
+        pickable: true,
+        aggregation: 'SUM',
+        cellMarginPixels: 3,
+        onHover: info => {
+          if (info && info.object) {
+            setHoverInfo({
+              x: info.x,
+              y: info.y - 20,
+              count: info.object.count,
+            });
+          } else {
+            setHoverInfo(null);
+          }
+        }
+      });
+    } else {
+      setHoverInfo(null);
+      layer = new ScatterplotLayer({
+        id: 'scatterplot-layer',
+        data: filteredFeatures,
+        getPosition: d => d.geometry.coordinates,
+        radiusMinPixels: 1.5,
+        radiusScale: 2,
+        getFillColor: d => getColorForYear(d.properties.rok_wykonania),
+        pickable: false,
+      });
+    }
+  
     overlayRef.current.setProps({ layers: [layer] });
-  }, [features, filteredFeatures]);
-
+  }, [features, filteredFeatures, zoomLevel]);
+  
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+      {hoverInfo && (
+        <div className='hover-info' style={{left: hoverInfo.x, top: hoverInfo.y}}>{hoverInfo.count} zdjęć</div>
+      )}
+
+      <div ref={mapContainer} style={{ width: '100%', height: '100%', borderRadius: '8px', boxShadow: '0 0 5px rgba(0,0,0,0.2)' }} />
 
       {/* Legenda */}
       <div
