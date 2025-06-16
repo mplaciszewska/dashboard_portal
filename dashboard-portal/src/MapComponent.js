@@ -20,6 +20,7 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
 
   useEffect(() => {
     if (onPolygonChange) {
+      onPolygonChange(null);
       onPolygonChange(drawnPolygon);
     }
   }, [drawnPolygon, onPolygonChange]);
@@ -87,6 +88,8 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
 
   useEffect(() => {
     if (!overlayRef.current) return;
+
+    overlayRef.current.setProps({ layers: [] });
   
     let layer;
   
@@ -95,16 +98,20 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
         id: 'screen-grid-layer',
         data: filteredFeatures,
         getPosition: d => d.geometry.coordinates,
-        cellSizePixels: 15,
+        cellSizePixels: 25,
         getWeight: () => 1,
         colorRange: [
           [255, 255, 204],
-          [161, 218, 180],
+          [199, 233, 180],
+          [127, 205, 187],
           [65, 182, 196],
-          [44, 127, 184],
+          [29, 145, 192],
+          [34, 94, 168],
           [37, 52, 148],
+          [8, 29, 88],
+          [0, 0, 55],
         ],
-        opacity: 0.8,
+        opacity: 0.3,
         pickable: true,
         aggregation: 'SUM',
         cellMarginPixels: 3,
@@ -128,12 +135,15 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
         getPosition: d => d.geometry.coordinates,
         radiusMinPixels: 1.5,
         radiusScale: 2,
-        getFillColor: d => getColorForYear(d.properties.rok_wykonania),
+        getFillColor: [35, 104, 123, 100],
         pickable: false,
       });
     }
   
     overlayRef.current.setProps({ layers: [layer] });
+    return () => {
+      overlayRef.current.setProps({ layers: [] });
+    };
   }, [features, filteredFeatures, zoomLevel]);
   
   return (
@@ -145,7 +155,7 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
       <div ref={mapContainer} style={{ width: '100%', height: '100%', borderRadius: '8px', boxShadow: '0 0 5px rgba(0,0,0,0.2)' }} />
 
       {/* Legenda */}
-      <div
+      {/* <div
         style={{
           position: 'absolute',
           bottom: '20px',
@@ -190,7 +200,7 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
             </div>
           );
         })}
-      </div>
+      </div> */}
     </div>
   );
 }

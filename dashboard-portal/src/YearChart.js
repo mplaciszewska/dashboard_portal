@@ -4,47 +4,27 @@ import { useState, useEffect } from 'react';
 import './YearChart.css';
 
 function groupYears(features) {
-    if (!Array.isArray(features)) return [];
-  
-    const bins = {};
-    let minYear = Infinity;
-    let maxYear = -Infinity;
-  
-    for (let i = 0; i < features.length; i++) {
-      const year = features[i]?.properties?.rok_wykonania;
-      if (typeof year === 'number' && year >= 1900 && year <= 2100) {
-        if (year < minYear) minYear = year;
-        if (year > maxYear) maxYear = year;
-  
-        bins[year] = (bins[year] || 0) + 1;
-      }
+  if (!Array.isArray(features)) return [];
+
+  const bins = {};
+
+  for (let feature of features) {
+    const year = feature?.properties?.rok_wykonania;
+    if (typeof year === 'number' && year >= 1900 && year <= 2100) {
+      bins[year] = (bins[year] || 0) + 1;
     }
-  
-    if (minYear === Infinity) return [];
-  
-    const range = maxYear - minYear;
-    let step;
-    if (range <= 10) step = 1;
-    else if (range <= 30) step = 5;
-    else if (range <= 100) step = 10;
-    else step = 20;
-  
-    const grouped = {};
-    for (const yearStr in bins) {
-      const year = parseInt(yearStr);
-      const groupStart = year - (year % step);
-      grouped[groupStart] = (grouped[groupStart] || 0) + bins[yearStr];
-    }
-  
-    return Object.entries(grouped)
-      .map(([start, count]) => ({
-        name: step === 1 ? `${start}` : `${start}–${+start + step - 1}`,
-        count,
-        sortKey: +start
-      }))
-      .sort((a, b) => a.sortKey - b.sortKey);
   }
-  
+
+  // Zamieniamy słownik na tablicę posortowaną po roku
+  return Object.entries(bins)
+    .map(([year, count]) => ({
+      name: year.toString(),
+      count: count,
+      sortKey: +year
+    }))
+    .sort((a, b) => a.sortKey - b.sortKey);
+}
+
 
 
 
@@ -69,14 +49,21 @@ export function YearChart({ features }) {
 
   return (
     <div className="year-chart-container">
-      <h3 style={{ fontSize: '16px', marginBottom: '17px', marginTop: '5px' }}>Zdjęcia według roku wykonania</h3>
+      <h4>Zdjęcia według roku wykonania</h4>
       <ResponsiveContainer width="100%">
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={60} fontSize={14}/>
+          <XAxis 
+  dataKey="name" 
+  interval="preserveStartEnd" 
+  angle={-45} 
+  textAnchor="end" 
+  height={60} 
+  fontSize={13}
+/>
           <YAxis fontSize={14}/>
           <Tooltip />
-          <Bar dataKey="count" fill="#2c7fb8" />
+          <Bar dataKey="count" fill="#79A7AC" />
         </BarChart>
       </ResponsiveContainer>
     </div>
