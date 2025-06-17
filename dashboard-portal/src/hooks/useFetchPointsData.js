@@ -2,27 +2,41 @@ import { useState, useEffect, useRef } from 'react';
 
 export function useFetchPointsData({ limit = 500000, polygon = null }) {
   const [features, setFeatures] = useState([]);
+  const [loading, setLoading] = useState([true])
   const skip = useRef(0);
 
   useEffect(() => {
     let isCancelled = false;
-
+    setLoading(true);
     setFeatures([]);
     skip.current = 0;
 
     const fetchData = async () => {
       try {
         if (polygon) {
-          console.log("Fetchowanie danych...", polygon);
-          const response = await fetch('http://localhost:8000/api/zdjecia/filter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ polygon: polygon.geometry }),
-          });
-          const data = await response.json();
-          if (!isCancelled) {
-            setFeatures(data.features || []);
-          }
+          const recursiveFetchPoly = async () => {
+            const response = await fetch('http://localhost:8000/api/zdjecia/filter', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                polygon: polygon.geometry,
+                skip:    skip.current,
+                limit
+              })
+            });
+            const data = await response.json();
+
+            if (isCancelled) return;
+            if (!data.features || data.features.length === 0) {
+              setLoading(false);
+              return;
+            }
+            setFeatures(prev => [...prev, ...data.features]);
+            skip.current += limit;
+            await recursiveFetchPoly();
+          };
+
+          await recursiveFetchPoly();
         } else {
           const recursiveFetch = async () => {
             console.log("Fetchowanie danych...");
@@ -30,8 +44,11 @@ export function useFetchPointsData({ limit = 500000, polygon = null }) {
             console.log("Odpowiedź z serwera:", response);
             const data = await response.json();
 
-            if (isCancelled || !data.features.length) return;
-
+            if (isCancelled) return;
+            if (!data.features || data.features.length === 0) {
+              setLoading(false);
+              return;
+            }           
             setFeatures(prev => [...prev, ...data.features]);
             skip.current += limit;
             await recursiveFetch();
@@ -51,5 +68,5 @@ export function useFetchPointsData({ limit = 500000, polygon = null }) {
     };
   }, [limit, polygon]);
 
-  return features;
+  return {features, loading};
 }

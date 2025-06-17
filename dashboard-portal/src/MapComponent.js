@@ -8,15 +8,25 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useDrawPolygon } from './hooks/useDrawPolygon';
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers';
 import './MapComponent.css';
+import Slider from '@mui/material/Slider';
+import Box from '@mui/material/Box';
 
 
-function MapComponent({ features, filteredFeatures, onPolygonChange }) {
+
+
+
+function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   minYear,
+  maxYear,onPolygonChange }) {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
   const drawnPolygon = useDrawPolygon(mapRef.current);
   const [zoomLevel, setZoomLevel] = useState(5);
   const [hoverInfo, setHoverInfo] = useState(null);
+
+  const handleYearChange = (event, newValue) => {
+    setYearRange(newValue);
+  };
 
   useEffect(() => {
     if (onPolygonChange) {
@@ -87,72 +97,73 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
   }, []);
 
   useEffect(() => {
-    if (!overlayRef.current) return;
+  if (!overlayRef.current) return;
 
-    overlayRef.current.setProps({ layers: [] });
-  
-    let layer;
-  
-    if (zoomLevel < 7.5) {
-      layer = new ScreenGridLayer({
-        id: 'screen-grid-layer',
-        data: filteredFeatures,
-        getPosition: d => d.geometry.coordinates,
-        cellSizePixels: 25,
-        getWeight: () => 1,
-        colorRange: [
-          [255, 255, 204],
-          [199, 233, 180],
-          [127, 205, 187],
-          [65, 182, 196],
-          [29, 145, 192],
-          [34, 94, 168],
-          [37, 52, 148],
-          [8, 29, 88],
-          [0, 0, 55],
-        ],
-        opacity: 0.3,
-        pickable: true,
-        aggregation: 'SUM',
-        cellMarginPixels: 3,
-        onHover: info => {
-          if (info && info.object) {
-            setHoverInfo({
-              x: info.x,
-              y: info.y - 20,
-              count: info.object.count,
-            });
-          } else {
-            setHoverInfo(null);
-          }
+  overlayRef.current.setProps({ layers: [] });
+
+  let layer;
+
+  if (zoomLevel < 7.5) {
+    layer = new ScreenGridLayer({
+      id: 'screen-grid-layer',
+      data: filteredFeatures,
+      getPosition: d => d.geometry.coordinates,
+      cellSizePixels: 25,
+      getWeight: () => 1,
+      colorRange: [
+        [255, 255, 204],
+        [199, 233, 180],
+        [127, 205, 187],
+        [65, 182, 196],
+        [29, 145, 192],
+        [34, 94, 168],
+        [37, 52, 148],
+        [8, 29, 88],
+        [0, 0, 55],
+      ],
+      opacity: 0.3,
+      pickable: true,
+      aggregation: 'SUM',
+      cellMarginPixels: 3,
+      onHover: info => {
+        if (info && info.object) {
+          setHoverInfo({
+            x: info.x,
+            y: info.y - 20,
+            count: info.object.count,
+          });
+        } else {
+          setHoverInfo(null);
         }
-      });
-    } else {
-      setHoverInfo(null);
-      layer = new ScatterplotLayer({
-        id: 'scatterplot-layer',
-        data: filteredFeatures,
-        getPosition: d => d.geometry.coordinates,
-        radiusMinPixels: 1.5,
-        radiusScale: 2,
-        getFillColor: [35, 104, 123, 100],
-        pickable: false,
-      });
-    }
-  
-    overlayRef.current.setProps({ layers: [layer] });
-    return () => {
-      overlayRef.current.setProps({ layers: [] });
-    };
-  }, [features, filteredFeatures, zoomLevel]);
-  
+      }
+    });
+  } else {
+    setHoverInfo(null);
+    layer = new ScatterplotLayer({
+      id: 'scatterplot-layer',
+      data: filteredFeatures,
+      getPosition: d => d.geometry.coordinates,
+      radiusMinPixels: 1.5,
+      radiusScale: 2,
+      getFillColor: d => getColorForYear(d.properties?.rok_wykonania),
+      pickable: false,
+    });
+  }
+
+  overlayRef.current.setProps({ layers: [layer] });
+
+  return () => {
+    overlayRef.current.setProps({ layers: [] });
+  };
+}, [features, yearRange, zoomLevel]);
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', gap:"0px" }}>
       {hoverInfo && (
         <div className='hover-info' style={{left: hoverInfo.x, top: hoverInfo.y}}>{hoverInfo.count} zdjęć</div>
       )}
 
-      <div ref={mapContainer} style={{ width: '100%', height: '100%', borderRadius: '8px', boxShadow: '0 0 5px rgba(0,0,0,0.2)' }} />
+      <div ref={mapContainer} style={{ width: '100%', flex: "90%", borderRadius: '8px 8px 0 0', boxShadow: '0 0 5px rgba(0,0,0,0.2)' }} />
 
       {/* Legenda */}
       {/* <div
@@ -201,6 +212,19 @@ function MapComponent({ features, filteredFeatures, onPolygonChange }) {
           );
         })}
       </div> */}
+    <Box className="custom-slider-container">
+      <p> Wybierz przedział czasowy</p>
+      <Slider
+        className="custom-slider"
+        value={yearRange}
+        min={minYear}
+        max={maxYear}
+        marks
+        step={1}
+        onChange={handleYearChange}
+        valueLabelDisplay="auto"
+      />
+    </Box>
     </div>
   );
 }

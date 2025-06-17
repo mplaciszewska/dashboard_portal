@@ -1,21 +1,19 @@
-import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Brush } from 'recharts';
 import { useState, useEffect } from 'react';
-import './YearChart.css';
+import './ChartYear.css';
 
 function groupYears(features) {
   if (!Array.isArray(features)) return [];
 
   const bins = {};
 
-  for (let feature of features) {
-    const year = feature?.properties?.rok_wykonania;
+  features.forEach(feature => {
+    const year = feature.properties?.rok_wykonania;
     if (typeof year === 'number' && year >= 1900 && year <= 2100) {
       bins[year] = (bins[year] || 0) + 1;
     }
-  }
+  })
 
-  // Zamieniamy słownik na tablicę posortowaną po roku
   return Object.entries(bins)
     .map(([year, count]) => ({
       name: year.toString(),
@@ -25,10 +23,7 @@ function groupYears(features) {
     .sort((a, b) => a.sortKey - b.sortKey);
 }
 
-
-
-
-export function YearChart({ features }) {
+export function ChartYear({ features }) {
   const [data, setData] = useState([]);
 
   useEffect(() => {
@@ -54,16 +49,17 @@ export function YearChart({ features }) {
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
-  dataKey="name" 
-  interval="preserveStartEnd" 
-  angle={-45} 
-  textAnchor="end" 
-  height={60} 
-  fontSize={13}
-/>
-          <YAxis fontSize={14}/>
+            dataKey="name" 
+            interval="preserveStartEnd" 
+            angle={-45} 
+            textAnchor="end" 
+            height={60} 
+            fontSize={13}
+          />
+          <YAxis fontSize={13}/>
           <Tooltip />
           <Bar dataKey="count" fill="#79A7AC" />
+          {/* <Brush dataKey="name" height={30} stroke="#79A7AC" /> */}
         </BarChart>
       </ResponsiveContainer>
     </div>

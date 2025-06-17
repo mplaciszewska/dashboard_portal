@@ -21,27 +21,24 @@ export function useDrawPolygon(map) {
         
       },
       styles: [
-    // Wypełnienie poligonu
     {
       id: 'custom-draw-polygon-fill',
       type: 'fill',
       filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
       paint: {
-        'fill-color': '#800020', // burgundowy
-        'fill-opacity': 0.1,
+        'fill-color': '#800020',
+        'fill-opacity': 0.05,
       },
     },
-    // Obramowanie
     {
       id: 'custom-draw-polygon-stroke',
       type: 'line',
       filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
       paint: {
-        'line-color': '#5A001E', // ciemniejszy burgund
+        'line-color': '#5A001E',
         'line-width': 2,
       },
     },
-    // Punkty kontrolne (halo)
     {
       id: 'custom-draw-vertex-halo',
       type: 'circle',
@@ -51,14 +48,13 @@ export function useDrawPolygon(map) {
         'circle-color': '#FFF',
       },
     },
-    // Punkty kontrolne (rdzeń)
     {
       id: 'custom-draw-vertex',
       type: 'circle',
       filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']],
       paint: {
         'circle-radius': 6,
-        'circle-color': '#800020', // burgund
+        'circle-color': '#800020',
       },
     },
   ]
@@ -80,14 +76,25 @@ export function useDrawPolygon(map) {
       setDrawnPolygon(null);
     };
 
+    const onDrawSelectionChange = e => {
+      if (e.features.length > 0) {
+        const selectedPolygon = polygon(e.features[0].geometry.coordinates);
+        setDrawnPolygon(selectedPolygon);
+      } else {
+        setDrawnPolygon(null);
+      }
+    };
+
     map.on('draw.create', onDrawCreate);
     map.on('draw.update', onDrawUpdate);
     map.on('draw.delete', onDrawDelete);
+    map.on('draw.selectionchange', onDrawSelectionChange);
 
     return () => {
       map.off('draw.create', onDrawCreate);
       map.off('draw.update', onDrawUpdate);
       map.off('draw.delete', onDrawDelete);
+      map.off('draw.selectionchange', onDrawSelectionChange);
       map.removeControl(draw);
     };
   }, [map]);

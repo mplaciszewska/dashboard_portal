@@ -60,3 +60,22 @@ html, body, #root {
   background-color: rgb(208, 208, 208);
   padding: 10px;
 }
+
+.loading-data-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 10px;
+  left: 150px;
+  z-index: 1000;
+  gap: 10px;
+  flex-direction: row-reverse;
+}
+
+.loading-text {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+  font-style: italic;
+}

@@ -30,7 +30,7 @@ def get_zdjecia(skip: int = 0, limit: int = limit):
         conn = psycopg2.connect(f"dbname={dbname} user={user} password={password} host={host} port={port}")
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna
+            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych
             FROM zdjecia_lotnicze
             ORDER BY id
             OFFSET %s LIMIT %s
@@ -45,6 +45,7 @@ def get_zdjecia(skip: int = 0, limit: int = limit):
             rok_wykonania = row[2]
             kolor = row[3]
             charakterystyka_przestrzenna = row[4]
+            zrodlo_danych = row[5]
             geojson = {
                 "type": "Feature",
                 "geometry": json.loads(geometry),
@@ -52,7 +53,8 @@ def get_zdjecia(skip: int = 0, limit: int = limit):
                     "id": id,
                     "rok_wykonania": rok_wykonania,
                     "kolor": kolor,
-                    "charakterystyka_przestrzenna": charakterystyka_przestrzenna
+                    "charakterystyka_przestrzenna": charakterystyka_przestrzenna,
+                    "zrodlo_danych": zrodlo_danych
                 }
             }
             result.append(geojson)
@@ -84,7 +86,7 @@ async def filter_zdjecia(data: PolygonModel):
         conn = psycopg2.connect(f"dbname={dbname} user={user} password={password} host={host} port={port}")
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna
+            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych
             FROM zdjecia_lotnicze
             WHERE ST_Intersects(geometry, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326))
             ORDER BY id
@@ -99,6 +101,7 @@ async def filter_zdjecia(data: PolygonModel):
             rok_wykonania = row[2]
             kolor = row[3]  
             charakterystyka_przestrzenna = row[4]
+            zrodlo_danych = row[5]
             geojson = {
                 "type": "Feature",
                 "geometry": json.loads(geometry),
@@ -106,7 +109,8 @@ async def filter_zdjecia(data: PolygonModel):
                     "id": id,
                     "rok_wykonania": rok_wykonania,
                     "kolor": kolor,
-                    "charakterystyka_przestrzenna": charakterystyka_przestrzenna
+                    "charakterystyka_przestrzenna": charakterystyka_przestrzenna,
+                    "zrodlo_danych": zrodlo_danych
                 }
             }
             result.append(geojson)

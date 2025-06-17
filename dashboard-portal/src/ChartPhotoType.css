@@ -1,11 +1,12 @@
-.chart2-container {
+.chart-phototype-container {
     background: 'white';
     padding: 1rem;
     /* margin: 1rem;
-    margin-top: 0; */
+    margin-top: 15px; */
     border-radius: 8px;
     box-shadow: 0 0 5px rgba(0,0,0,0.2);
     font-size: 16px;
-    height: 370px;
+    height: 197px;
+    /* width: 200px; */
     background-color: white;
 }
