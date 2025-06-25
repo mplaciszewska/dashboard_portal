@@ -45,7 +45,7 @@ export function ChartYear({ features }) {
   return (
     <div className="year-chart-container">
       <h4>Zdjęcia według roku wykonania</h4>
-      <ResponsiveContainer width="100%">
+      <ResponsiveContainer width="100%" minHeight={155} height="100%" >
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
-import { polygon } from '@turf/helpers';
 
 export function useDrawPolygon(map) {
   const [drawnPolygon, setDrawnPolygon] = useState(null);
+  const drawRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
@@ -60,15 +60,31 @@ export function useDrawPolygon(map) {
   ]
     });
 
+        drawRef.current = draw;
+
     map.addControl(draw, 'top-left');
 
+    const clearPolygon = () => {
+      const data = draw.getAll();
+      var pids = []
+      const lid = data.features[data.features.length - 1].id
+
+      data.features.forEach((f) => {
+        if (f.geometry.type === 'Polygon' && f.id !== lid) {
+          pids.push(f.id)
+        }
+      })
+      draw.delete(pids)
+      setDrawnPolygon(null);
+    };
+
     const onDrawCreate = e => {
-      const newPolygon = polygon(e.features[0].geometry.coordinates);
+      const newPolygon = e.features[0].geometry;
       setDrawnPolygon(newPolygon);
     };
 
     const onDrawUpdate = e => {
-      const newPolygon = polygon(e.features[0].geometry.coordinates);
+      const newPolygon = e.features[0].geometry;
       setDrawnPolygon(newPolygon);
     };
 
@@ -78,10 +94,16 @@ export function useDrawPolygon(map) {
 
     const onDrawSelectionChange = e => {
       if (e.features.length > 0) {
-        const selectedPolygon = polygon(e.features[0].geometry.coordinates);
+        const selectedPolygon = e.features[0].geometry;
         setDrawnPolygon(selectedPolygon);
       } else {
         setDrawnPolygon(null);
+      }
+    };
+
+    const onModeChange = (e) => {
+      if (draw.getMode() === 'draw_polygon') {
+        clearPolygon();
       }
     };
 
@@ -89,15 +111,29 @@ export function useDrawPolygon(map) {
     map.on('draw.update', onDrawUpdate);
     map.on('draw.delete', onDrawDelete);
     map.on('draw.selectionchange', onDrawSelectionChange);
+    map.on('draw.modechange', onModeChange);
+
 
     return () => {
       map.off('draw.create', onDrawCreate);
       map.off('draw.update', onDrawUpdate);
       map.off('draw.delete', onDrawDelete);
       map.off('draw.selectionchange', onDrawSelectionChange);
+      map.off('draw.modechange', onModeChange);
       map.removeControl(draw);
+
     };
   }, [map]);
 
-  return drawnPolygon;
+    return drawnPolygon;
+
+  //  return {
+  //   polygon: drawnPolygon,
+  //   clearPolygon: () => {
+  //     if (drawRef.current) {
+  //       drawRef.current.deleteAll();
+  //       setDrawnPolygon(null);
+  //     }
+  //   }
+  // };
 }

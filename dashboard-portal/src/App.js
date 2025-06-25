@@ -10,13 +10,17 @@ import {ChartResolution} from './ChartResolution';
 import {ChartColor} from './ChartColor';
 import { ChartPhotoType } from './ChartPhotoType';
 import { Ring } from 'ldrs/react'
+import TerytSelection from './TerytSelection';
 import 'ldrs/react/Ring.css'
+import { useRegionGeometry } from './hooks/useRegionGeometry';
+
 
 function App() {
   const [polygon, setPolygon] = useState(null);
   const {features, loading} = useFetchPointsData({ limit: 500000, polygon });
   const [yearRange, setYearRange] = useState([1950, 2025]);
   const hasUserChangedRange = useRef(false);
+  const [region, setRegion] = useState({ level: null, kod: null });
 
   const handleYearRangeChange = (newRange) => {
     hasUserChangedRange.current = true;
@@ -61,62 +65,73 @@ function App() {
     return polygonArea > 0 ? filteredFeatures.length / polygonArea : 0;
   }, [filteredFeatures, polygonArea]);
 
+  const regionGeometry = useRegionGeometry(region.level, region.kod);
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>Dashboard Portal</h1>
       </header>
       <div className="main-content">
-        <div style={{ display: 'flex', flex: 1, minHeight: 0, maxHeight: '400px', margin:'0' }}>
-          <div style={{ height: '400px', flex: "30%", position: 'relative'}}>
+
+        <div style={{ display: 'flex', flex: "70%", minHeight: 0, margin: '0' }}>
+          <div style={{ flex: "30%", position: 'relative'}}>
             {loading ? (
               <div className="loading-data-container">
                 <p className="loading-text">Ładowanie danych</p>
-                <Ring
-                className="loading-ring"
-                size="20"
-                stroke="3"
-                bgOpacity="0"
-                speed="2"
-                color="#333" 
-                />
+                <Ring className="loading-ring" size="20" stroke="3" bgOpacity="0" speed="2" color="#333" />
               </div>
             ) : null}
-            <MapComponent
-              features={features}
-              filteredFeatures={filteredFeatures}
-              yearRange={yearRange}
-              setYearRange={handleYearRangeChange}
-              minYear={minYear}
-              maxYear={maxYear}
-              onPolygonChange={setPolygon}
-            />
+            <div style={{ width: '100%', height: '100%' }}>
+              <MapComponent
+                features={features}
+                filteredFeatures={filteredFeatures}
+                yearRange={yearRange}
+                setYearRange={handleYearRangeChange}
+                minYear={minYear}
+                maxYear={maxYear}
+                onPolygonChange={setPolygon}
+                regionGeometry={regionGeometry}
+              />
+            </div>
+              <TerytSelection onConfirm={(level, kod) => setRegion({ level, kod })} 
+                style={{
+                position: 'absolute',
+                top: '75px',
+                left: '9px',
+                zIndex: 1000,
+
+                borderRadius: '4px'
+              }}/>
           </div>
-          <div style={{ flex: "40%", minHeight: 0, margin: '0 10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div>
+
+          <div style={{ flex: "40%", minHeight: 0, margin: '0 10px', display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
             <SummaryComponent 
               count={filteredFeatures.length}
               polygonArea={polygonArea}
               featuresPerKm2={featuresPerKm2}
+              region={regionGeometry}
             />
-            </div >
-            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: '10px' }}>
-              <div style={{ flex: "50%", minHeight: 0 }}>
+            <div style={{ display: 'flex', flex: 1, flexDirection: 'row', gap: '10px', minHeight: 0 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <ChartColor features={filteredFeatures} />
               </div>
-              <div style={{ flex: "50%", minHeight: 0 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <ChartPhotoType features={filteredFeatures} />
               </div>
             </div>
           </div>
-          <div style={{ flex: "30%", minHeight: 0 }}>
-            <ChartResolution features ={filteredFeatures} />
+
+          <div style={{ flex: "30%", minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <ChartResolution features={filteredFeatures} />
           </div>
         </div>
-        <div style={{ width:'716px'}}>
+
+        <div style={{ flex: "30%"}}>
           <ChartYear features={filteredFeatures} />
         </div>
       </div>
+
 
     </div>
   );

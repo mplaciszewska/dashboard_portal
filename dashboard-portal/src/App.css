@@ -2,12 +2,15 @@ html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow: auto;
+  font-family: "Chiron Sung HK", serif;
 }
+
 
 .App {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* zamiast height */
 }
 
 .map-wrapper {
@@ -56,10 +59,12 @@ html, body, #root {
 .main-content {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 75px);
+  flex-grow: 1;
+
   background-color: rgb(208, 208, 208);
   padding: 10px;
 }
+
 
 .loading-data-container {
   display: flex;

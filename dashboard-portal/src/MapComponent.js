@@ -10,13 +10,12 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers';
 import './MapComponent.css';
 import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
-
-
-
+import { GeoJsonLayer } from '@deck.gl/layers';
+import turfSimplify from '@turf/simplify';
 
 
 function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   minYear,
-  maxYear,onPolygonChange }) {
+  maxYear, onPolygonChange, regionGeometry }) {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
@@ -28,12 +27,26 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
     setYearRange(newValue);
   };
 
-  useEffect(() => {
-    if (onPolygonChange) {
-      onPolygonChange(null);
+useEffect(() => {
+  if (onPolygonChange) {
+    if (drawnPolygon) {
       onPolygonChange(drawnPolygon);
+    } else {
+      if (regionGeometry) {
+        let geometry = regionGeometry;
+        
+        if (regionGeometry.type === "Feature") {
+          geometry = regionGeometry.geometry;
+        } else if (regionGeometry.type === "FeatureCollection" && regionGeometry.features.length) {
+          geometry = regionGeometry.features[0].geometry;
+        }
+        onPolygonChange(geometry);
+      } else {
+        onPolygonChange(null);
+      }
     }
-  }, [drawnPolygon, onPolygonChange]);
+  }
+}, [drawnPolygon, regionGeometry, onPolygonChange]);
 
   const colorPalette = [
     [35, 104, 123, 100],
@@ -97,65 +110,108 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
   }, []);
 
   useEffect(() => {
-  if (!overlayRef.current) return;
+    if (!overlayRef.current) return;
 
-  overlayRef.current.setProps({ layers: [] });
-
-  let layer;
-
-  if (zoomLevel < 7.5) {
-    layer = new ScreenGridLayer({
-      id: 'screen-grid-layer',
-      data: filteredFeatures,
-      getPosition: d => d.geometry.coordinates,
-      cellSizePixels: 25,
-      getWeight: () => 1,
-      colorRange: [
-        [255, 255, 204],
-        [199, 233, 180],
-        [127, 205, 187],
-        [65, 182, 196],
-        [29, 145, 192],
-        [34, 94, 168],
-        [37, 52, 148],
-        [8, 29, 88],
-        [0, 0, 55],
-      ],
-      opacity: 0.3,
-      pickable: true,
-      aggregation: 'SUM',
-      cellMarginPixels: 3,
-      onHover: info => {
-        if (info && info.object) {
-          setHoverInfo({
-            x: info.x,
-            y: info.y - 20,
-            count: info.object.count,
-          });
-        } else {
-          setHoverInfo(null);
-        }
-      }
-    });
-  } else {
-    setHoverInfo(null);
-    layer = new ScatterplotLayer({
-      id: 'scatterplot-layer',
-      data: filteredFeatures,
-      getPosition: d => d.geometry.coordinates,
-      radiusMinPixels: 1.5,
-      radiusScale: 2,
-      getFillColor: d => getColorForYear(d.properties?.rok_wykonania),
-      pickable: false,
-    });
-  }
-
-  overlayRef.current.setProps({ layers: [layer] });
-
-  return () => {
     overlayRef.current.setProps({ layers: [] });
-  };
-}, [features, yearRange, zoomLevel]);
+
+    let layer;
+
+    if (zoomLevel < 7.5) {
+      layer = new ScreenGridLayer({
+        id: 'screen-grid-layer',
+        data: filteredFeatures,
+        getPosition: d => d.geometry.coordinates,
+        cellSizePixels: 25,
+        getWeight: () => 1,
+        colorRange: [
+          [255, 255, 204],
+          [199, 233, 180],
+          [127, 205, 187],
+          [65, 182, 196],
+          [29, 145, 192],
+          [34, 94, 168],
+          [37, 52, 148],
+          [8, 29, 88],
+          [0, 0, 55],
+        ],
+        opacity: 0.3,
+        pickable: true,
+        aggregation: 'SUM',
+        cellMarginPixels: 3,
+        onHover: info => {
+          if (info && info.object) {
+            setHoverInfo({
+              x: info.x,
+              y: info.y - 20,
+              count: info.object.count,
+            });
+          } else {
+            setHoverInfo(null);
+          }
+        }
+      });
+    } else {
+      setHoverInfo(null);
+      layer = new ScatterplotLayer({
+        id: 'scatterplot-layer',
+        data: filteredFeatures,
+        getPosition: d => d.geometry.coordinates,
+        radiusMinPixels: 2,
+        radiusScale: 3,
+        getFillColor: d => getColorForYear(d.properties?.rok_wykonania),
+        pickable: false,
+      });
+    }
+
+    const layers = [layer];
+
+    if (regionGeometry) {
+      layers.push(
+        new GeoJsonLayer({
+          id: "region-layer",
+          data: regionGeometry,
+          stroked: true,
+          filled: true,
+          getFillColor: [128, 0, 32, 10],
+          getLineWidth: 6,
+          getLineColor: [128, 0, 32, 255],
+          lineWidthMinPixels: 2,
+          lineWidthScale: 1,
+        })
+      );
+    }
+    overlayRef.current.setProps({ layers });
+
+    return () => {
+      overlayRef.current.setProps({ layers: [] });
+    };
+  }, [features, yearRange, zoomLevel, regionGeometry, filteredFeatures]);
+
+  useEffect(() => {
+    if (!mapRef.current || !regionGeometry) return;
+
+    try {
+      const coordinates = regionGeometry.features[0].geometry.coordinates;
+
+      let bounds = new maplibregl.LngLatBounds();
+      const coordSets = regionGeometry.features[0].geometry.type === 'Polygon'
+        ? [coordinates]
+        : coordinates;
+
+      coordSets.forEach(polygon => {
+        polygon[0].forEach(coord => {
+          bounds.extend(coord);
+        });
+      });
+
+      mapRef.current.fitBounds(bounds, {
+        padding: 40,
+        duration: 800
+      });
+    } catch (e) {
+      console.error("Błąd przy zoomowaniu do regionu:", e);
+    }
+  }, [regionGeometry]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', gap:"0px" }}>

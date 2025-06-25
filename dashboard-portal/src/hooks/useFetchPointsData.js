@@ -14,12 +14,13 @@ export function useFetchPointsData({ limit = 500000, polygon = null }) {
     const fetchData = async () => {
       try {
         if (polygon) {
+          console.log("Wysyłam do backendu polygon:", polygon);
           const recursiveFetchPoly = async () => {
             const response = await fetch('http://localhost:8000/api/zdjecia/filter', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                polygon: polygon.geometry,
+                polygon: polygon,
                 skip:    skip.current,
                 limit
               })
