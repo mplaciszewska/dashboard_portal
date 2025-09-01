@@ -10,6 +10,7 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers';
 import './MapComponent.css';
 import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import turfSimplify from '@turf/simplify';
 
@@ -19,44 +20,46 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
-  const drawnPolygon = useDrawPolygon(mapRef.current);
+  const popupRef = useRef(null);
+  const drawnPolygon = useDrawPolygon(mapRef.current, regionGeometry);
   const [zoomLevel, setZoomLevel] = useState(5);
   const [hoverInfo, setHoverInfo] = useState(null);
+  const [popup, setPopup] = useState(null);
 
   const handleYearChange = (event, newValue) => {
     setYearRange(newValue);
   };
 
-useEffect(() => {
-  if (onPolygonChange) {
-    if (drawnPolygon) {
-      onPolygonChange(drawnPolygon);
-    } else {
-      if (regionGeometry) {
-        let geometry = regionGeometry;
-        
-        if (regionGeometry.type === "Feature") {
-          geometry = regionGeometry.geometry;
-        } else if (regionGeometry.type === "FeatureCollection" && regionGeometry.features.length) {
-          geometry = regionGeometry.features[0].geometry;
-        }
-        onPolygonChange(geometry);
+  useEffect(() => {
+    if (onPolygonChange) {
+      if (drawnPolygon) {
+        onPolygonChange(drawnPolygon);
       } else {
-        onPolygonChange(null);
+        if (regionGeometry) {
+          let geometry = regionGeometry;
+          
+          if (regionGeometry.type === "Feature") {
+            geometry = regionGeometry.geometry;
+          } else if (regionGeometry.type === "FeatureCollection" && regionGeometry.features.length) {
+            geometry = regionGeometry.features[0].geometry;
+          }
+          onPolygonChange(geometry);
+        } else {
+          onPolygonChange(null);
+        }
       }
     }
-  }
-}, [drawnPolygon, regionGeometry, onPolygonChange]);
+  }, [drawnPolygon, regionGeometry, onPolygonChange]);
 
   const colorPalette = [
-    [35, 104, 123, 100],
-    [40, 135, 161, 100],
-    [121, 167, 172, 100],
-    [181, 200, 184, 100],
-    [237, 234, 194, 100],
-    [214, 189, 141, 100],
-    [189, 146, 90, 100],
-    [161, 105, 40, 100],
+    [35, 104, 123, 130],
+    [40, 135, 161, 130],
+    [121, 167, 172, 130],
+    [181, 200, 184, 130],
+    [237, 234, 194, 130],
+    [214, 189, 141, 130],
+    [189, 146, 90, 130],
+    [161, 105, 40, 130],
   ];
 
   function getColorForYear(year) {
@@ -156,10 +159,25 @@ useEffect(() => {
         id: 'scatterplot-layer',
         data: filteredFeatures,
         getPosition: d => d.geometry.coordinates,
-        radiusMinPixels: 2,
-        radiusScale: 3,
+        radiusUnits: 'pixels',
+        getRadius: () => 1,
+        radiusScale: 1 + Math.max(0, Math.pow((zoomLevel - 7), 1.2) * 0.7),
+        radiusMinPixels: 1,
+        radiusMaxPixels: 4,
         getFillColor: d => getColorForYear(d.properties?.rok_wykonania),
-        pickable: false,
+        pickable: true,
+        onClick: ({object, x, y}) => {
+          setPopup({
+            x,
+            y,
+            url: object?.properties?.url_do_pobrania || null,
+            rok_wykonania: object?.properties?.rok_wykonania || null,
+            rozdzielczosc: object?.properties?.charakterystyka_przestrzenna || null,
+            kolor: object?.properties?.kolor || null,
+            typ_zdjecia: object?.properties?.zrodlo_danych || null,
+            nr_zgloszenia: object?.properties?.numer_zgloszenia || null,
+          });
+        }
       });
     }
 
@@ -186,6 +204,19 @@ useEffect(() => {
       overlayRef.current.setProps({ layers: [] });
     };
   }, [features, yearRange, zoomLevel, regionGeometry, filteredFeatures]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        setPopup(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current || !regionGeometry) return;
@@ -218,6 +249,63 @@ useEffect(() => {
       {hoverInfo && (
         <div className='hover-info' style={{left: hoverInfo.x, top: hoverInfo.y}}>{hoverInfo.count} zdjęć</div>
       )}
+        {popup && (
+          <div
+            ref={popupRef}
+            style={{
+              position: 'absolute',
+              left: popup.x,
+              top: popup.y,
+              background: 'white',
+              padding: '8px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              zIndex: 1000
+            }}
+          >
+          <table className='popup-table'>
+            <tbody>
+              <tr>
+                <td className='popup-label'>Rok wykonania:</td>
+                <td className='popup-value'>{popup.rok_wykonania || 'Brak danych'}</td>
+              </tr>
+              <tr>
+                <td className='popup-label'>Charakterystyka  <br/>przestrzenna:</td>
+                <td className='popup-value'>{popup.rozdzielczosc || 'Brak danych'}</td>
+              </tr>
+              <tr>
+                <td className='popup-label'>Kolor:</td>
+                <td className='popup-value'>{popup.kolor || 'Brak danych'}</td>
+              </tr>
+              <tr>
+                <td className='popup-label'>Typ zdjęcia:</td>
+                <td className='popup-value'>{popup.typ_zdjecia || 'Brak danych'}</td>
+              </tr>
+              <tr>
+                <td className='popup-label'>Nr zgłoszenia:</td>
+                <td className='popup-value'>{popup.nr_zgloszenia || 'Brak danych'}</td>
+              </tr>
+            </tbody>
+          </table>
+            {popup.url ? (
+              <div className="popup-content">
+                <img src={popup.url} className='popup-image' alt="Podgląd zdjęcia"/>
+                <Button
+                  variant="outlined"
+                  className='popup-button'
+                  startIcon={<img src="/images/download.png" alt="download" style={{ width: 18, height: 18 }} />}
+                  component="a"
+                  href={popup.url}
+                  download
+                >
+                  Pobierz zdjęcie
+                </Button>
+              </div>
+            ) : (
+              <p className="popup-text">Brak zdjęcia do podglądu</p>
+            )}
+          </div>
+        )}
 
       <div ref={mapContainer} style={{ width: '100%', flex: "90%", borderRadius: '8px 8px 0 0', boxShadow: '0 0 5px rgba(0,0,0,0.2)' }} />
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./TerytSelection.css";
 import Select from 'react-select';
+import Button from '@mui/material/Button';
 
 function TerytSelection({ onConfirm, style}) {
   const [isVisible, setIsVisible] = useState(false);
@@ -86,11 +87,13 @@ function TerytSelection({ onConfirm, style}) {
       ...base,
       paddingTop: 0,
       paddingBottom: 0,
+      maxHeight: '180px',
+      overflowY: 'auto', 
     }),
     option: (base, state) => ({
       ...base,
       backgroundColor: state.isSelected
-        ? "rgb(181, 200, 184)"
+        ? "rgba(128, 0, 32, 0.4)"
         : state.isFocused
         ? "#eee"
         : "white",
@@ -131,10 +134,10 @@ function TerytSelection({ onConfirm, style}) {
                   colors: {
                     ...theme.colors,
                     primary25: "#eee",
-                    primary: "rgb(181, 200, 184)",
+                    primary: "rgba(128, 0, 32, 0.4)",
                     neutral20: "#999",
                     neutral30: "#666",
-                    primary50: "rgb(181, 200, 184)",
+                    primary50: "rgba(128, 0, 32, 0.4)",
                   },
                 })}
               />
@@ -157,10 +160,10 @@ function TerytSelection({ onConfirm, style}) {
                   colors: {
                     ...theme.colors,
                     primary25: "#eee",
-                    primary: "rgb(181, 200, 184)",
+                    primary: "rgba(128, 0, 32, 0.4)",
                     neutral20: "#999",
                     neutral30: "#666",
-                    primary50: "rgb(181, 200, 184)",
+                    primary50: "rgba(128, 0, 32, 0.4)",
                   },
                 })}
               />
@@ -183,41 +186,43 @@ function TerytSelection({ onConfirm, style}) {
                   colors: {
                     ...theme.colors,
                     primary25: "#eee",
-                    primary: "rgb(181, 200, 184)",
+                    primary: "rgba(128, 0, 32, 0.4)",
                     neutral20: "#999",
                     neutral30: "#666",
-                    primary50: "rgb(181, 200, 184)",
+                    primary50: "rgba(128, 0, 32, 0.4)",
                   },
                 })}
               />
             </label>
           </div>
           <div className="buttons-control">
-            <button
+            <Button
               className="button-control"
+              variant="outlined"
               disabled={!selectedWoj}
               onClick={() => {
                 if (selectedGmi) onConfirm("gmi", selectedGmi.value);
                 else if (selectedPow) onConfirm("pow", selectedPow.value);
                 else onConfirm("woj", selectedWoj.value);
-                setIsVisible(false);
+                setTimeout(() => setIsVisible(false), 300); 
               }}
             >
               Zatwierdź
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="outlined"
               className="button-control"
               onClick={() => {
                 setSelectedWoj("");
                 setSelectedPow("");
                 setSelectedGmi("");
                 onConfirm(null, null);
-                setIsVisible(false);
+                setTimeout(() => setIsVisible(false), 300); 
               }}
             >
               Wyczyść filtr
-            </button>
+            </Button>
           </div>
         </div>
       )}

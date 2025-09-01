@@ -6,6 +6,12 @@ html, body, #root {
   font-family: "Chiron Sung HK", serif;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 
 .App {
   display: flex;
@@ -60,10 +66,14 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-
   background-color: rgb(208, 208, 208);
   padding: 10px;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  gap: 10px;
 }
+
 
 
 .loading-data-container {

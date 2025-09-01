@@ -98,3 +98,68 @@ html, body {
 .custom-slider .MuiSlider-valueLabelOpen {
     transform: translateY(-30px) scale(1) !important;
 }
+
+/* .popup-content button{
+    background-color: #800020;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 10px;
+} */
+
+/* .popup-content a {
+    text-decoration: none;
+    color: #800020;
+    font-weight: 500;
+    font-size: 12px;
+    font-family: "Chiron Sung HK", serif;
+} */
+
+.popup-text {
+    font-size: 12px;
+    color: #333;
+    font-weight: 500;
+    margin: 0;
+    padding: 0;
+}
+
+.popup-image {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 4px;
+    display: block;
+}
+
+.popup-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+}
+
+.popup-button {
+    width: 100%;
+    
+}
+
+.popup-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+.popup-table th, .popup-table td {
+    padding: 4px 8px;
+    text-align: left;
+    font-size: 11px;
+    color: #333;
+    border: 1px solid #ddd;
+}

@@ -60,28 +60,28 @@ function groupResolution(features) {
 }
 
 export function ChartResolution({features}) {
-    const [analogData, setAnalogData] = useState([]);
-    const [cyfrData, setCyfrData] = useState([]);
-    
-    useEffect(() => {
-        if (!Array.isArray(features) || features.length === 0) {
-            setAnalogData([]);
-            setCyfrData([]);
-            return;
-        }
-    
-        const timeout = setTimeout(() => {
-            const { analogData, cyfrData } = groupResolution(features);
-            setAnalogData(analogData);
-            setCyfrData(cyfrData);
-        }, 300); // debounce 300ms
-    
-        return () => clearTimeout(timeout);
-    }, [features]);
+  const [analogData, setAnalogData] = useState([]);
+  const [cyfrData, setCyfrData] = useState([]);
+  
+  useEffect(() => {
+      if (!Array.isArray(features) || features.length === 0) {
+          setAnalogData([]);
+          setCyfrData([]);
+          return;
+      }
+  
+      const timeout = setTimeout(() => {
+          const { analogData, cyfrData } = groupResolution(features);
+          setAnalogData(analogData);
+          setCyfrData(cyfrData);
+      }, 300); // debounce 300ms
+  
+      return () => clearTimeout(timeout);
+  }, [features]);
 
 
-    const cyfStats = calculateStats(cyfrData);
-    const analogStats = calculateStats(analogData);
+  const cyfStats = calculateStats(cyfrData);
+  const analogStats = calculateStats(analogData);
 
   return (
     <div className="chart-resolution-container">
@@ -103,7 +103,7 @@ export function ChartResolution({features}) {
                   </div>
                 )}
               </div>
-              <ResponsiveContainer width="100%" height="75%" >
+              <ResponsiveContainer width="100%" height="100%" >
                 <BarChart data={cyfrData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" height={35} fontSize={13} />
