@@ -15,8 +15,9 @@ import { GeoJsonLayer } from '@deck.gl/layers';
 import turfSimplify from '@turf/simplify';
 
 
-function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   minYear,
+function MapComponent({ features, filteredFeatures, yearRange, setYearRange, minYear,
   maxYear, onPolygonChange, regionGeometry }) {
+
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
@@ -25,31 +26,12 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
   const [zoomLevel, setZoomLevel] = useState(5);
   const [hoverInfo, setHoverInfo] = useState(null);
   const [popup, setPopup] = useState(null);
+  const [showLegend, setShowLegend] = useState(false);
 
+  
   const handleYearChange = (event, newValue) => {
     setYearRange(newValue);
   };
-
-  useEffect(() => {
-    if (onPolygonChange) {
-      if (drawnPolygon) {
-        onPolygonChange(drawnPolygon);
-      } else {
-        if (regionGeometry) {
-          let geometry = regionGeometry;
-          
-          if (regionGeometry.type === "Feature") {
-            geometry = regionGeometry.geometry;
-          } else if (regionGeometry.type === "FeatureCollection" && regionGeometry.features.length) {
-            geometry = regionGeometry.features[0].geometry;
-          }
-          onPolygonChange(geometry);
-        } else {
-          onPolygonChange(null);
-        }
-      }
-    }
-  }, [drawnPolygon, regionGeometry, onPolygonChange]);
 
   const colorPalette = [
     [35, 104, 123, 130],
@@ -66,20 +48,37 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
     const minYear = 1950;
     const maxYear = 2025;
     const range = maxYear - minYear + 1;
-  
+
     if (year < minYear || year > maxYear || isNaN(year)) {
       return [200, 200, 200, 180];
     }
 
     const normalized = (year - minYear) / range;
     let index = Math.floor(normalized * colorPalette.length);
-  
+
     if (index >= colorPalette.length) index = colorPalette.length - 1;
 
     const reversedIndex = colorPalette.length - 1 - index;
-  
+
     return [...colorPalette[reversedIndex], 180];
   }
+
+  useEffect(() => {
+    if (onPolygonChange) {
+      if (drawnPolygon) {
+        onPolygonChange(drawnPolygon);
+      } else if (regionGeometry) {
+        let geometry = regionGeometry.type === "FeatureCollection"
+          ? regionGeometry.features[0].geometry
+          : regionGeometry.type === "Feature"
+            ? regionGeometry.geometry
+            : regionGeometry;
+        onPolygonChange(geometry);
+      } else {
+        onPolygonChange(null);
+      }
+    }
+  }, [drawnPolygon, regionGeometry, onPolygonChange]);
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -94,66 +93,63 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
     mapRef.current = map;
 
     map.on('load', () => {
-      const deckOverlay = new MapboxOverlay({
-        interleaved: true,
-        layers: [],
-        
-      });
+      const deckOverlay = new MapboxOverlay({ interleaved: true, layers: [] });
       overlayRef.current = deckOverlay;
       map.addControl(deckOverlay);
     });
 
-    map.on('zoom', () => {
-      setZoomLevel(map.getZoom());
-    });
+    map.on('zoom', () => setZoomLevel(map.getZoom()));
 
-    return () => {
-      map.remove();
-    };
+    return () => map.remove();
   }, []);
 
+  // Layer rendering
   useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current;
+
+  const setupMVTLayers = () => {
+    // Dodaj źródło i warstwę MVT tylko raz
+    if (!map.getSource('tiles-source')) {
+      map.addSource('tiles-source', {
+        type: 'vector',
+        tiles: ['http://127.0.0.1:8000/tiling/tiles11/{z}/{x}/{y}.pbf'],
+        minzoom: 2,
+        maxzoom: 11,
+        scheme: 'xyz',
+      });
+
+      map.addLayer({
+        id: 'tiles-layer',
+        type: 'circle',
+        source: 'tiles-source',
+        'source-layer': 'layer',
+        paint: {
+          'circle-radius': 2,
+          'circle-color': 'blue',
+        },
+        layout: {
+          visibility: zoomLevel < 12 ? 'visible' : 'none',
+        },
+      });
+    }
+  };
+
+  const renderLayers = () => {
     if (!overlayRef.current) return;
 
-    overlayRef.current.setProps({ layers: [] });
+    // Pokaż lub ukryj warstwę MVT w zależności od zoomLevel
+    if (map.getLayer('tiles-layer')) {
+      map.setLayoutProperty(
+        'tiles-layer',
+        'visibility',
+        zoomLevel < 12 ? 'visible' : 'none'
+      );
+    }
 
     let layer;
-
-    if (zoomLevel < 7.5) {
-      layer = new ScreenGridLayer({
-        id: 'screen-grid-layer',
-        data: filteredFeatures,
-        getPosition: d => d.geometry.coordinates,
-        cellSizePixels: 25,
-        getWeight: () => 1,
-        colorRange: [
-          [255, 255, 204],
-          [199, 233, 180],
-          [127, 205, 187],
-          [65, 182, 196],
-          [29, 145, 192],
-          [34, 94, 168],
-          [37, 52, 148],
-          [8, 29, 88],
-          [0, 0, 55],
-        ],
-        opacity: 0.3,
-        pickable: true,
-        aggregation: 'SUM',
-        cellMarginPixels: 3,
-        onHover: info => {
-          if (info && info.object) {
-            setHoverInfo({
-              x: info.x,
-              y: info.y - 20,
-              count: info.object.count,
-            });
-          } else {
-            setHoverInfo(null);
-          }
-        }
-      });
-    } else {
+    if (zoomLevel >= 8) {
+      // ScatterplotLayer dla wysokich zoomów
       setHoverInfo(null);
       layer = new ScatterplotLayer({
         id: 'scatterplot-layer',
@@ -166,81 +162,76 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
         radiusMaxPixels: 4,
         getFillColor: d => getColorForYear(d.properties?.rok_wykonania),
         pickable: true,
-        onClick: ({object, x, y}) => {
-          setPopup({
-            x,
-            y,
-            url: object?.properties?.url_do_pobrania || null,
-            rok_wykonania: object?.properties?.rok_wykonania || null,
-            rozdzielczosc: object?.properties?.charakterystyka_przestrzenna || null,
-            kolor: object?.properties?.kolor || null,
-            typ_zdjecia: object?.properties?.zrodlo_danych || null,
-            nr_zgloszenia: object?.properties?.numer_zgloszenia || null,
-          });
-        }
+        onClick: ({ object, x, y }) => setPopup({
+          x, y,
+          url: object?.properties?.url_do_pobrania || null,
+          rok_wykonania: object?.properties?.rok_wykonania || null,
+          rozdzielczosc: object?.properties?.charakterystyka_przestrzenna || null,
+          kolor: object?.properties?.kolor || null,
+          typ_zdjecia: object?.properties?.zrodlo_danych || null,
+          nr_zgloszenia: object?.properties?.numer_zgloszenia || null,
+        }),
       });
     }
 
-    const layers = [layer];
-
+    const layers = layer ? [layer] : [];
     if (regionGeometry) {
-      layers.push(
-        new GeoJsonLayer({
-          id: "region-layer",
-          data: regionGeometry,
-          stroked: true,
-          filled: true,
-          getFillColor: [128, 0, 32, 10],
-          getLineWidth: 6,
-          getLineColor: [128, 0, 32, 255],
-          lineWidthMinPixels: 2,
-          lineWidthScale: 1,
-        })
-      );
+      layers.push(new GeoJsonLayer({
+        id: 'region-layer',
+        data: regionGeometry,
+        stroked: true,
+        filled: true,
+        getFillColor: [128, 0, 32, 10],
+        getLineWidth: 6,
+        getLineColor: [128, 0, 32, 255],
+        lineWidthMinPixels: 2,
+        lineWidthScale: 1,
+      }));
     }
+
     overlayRef.current.setProps({ layers });
+  };
 
-    return () => {
-      overlayRef.current.setProps({ layers: [] });
-    };
-  }, [features, yearRange, zoomLevel, regionGeometry, filteredFeatures]);
+  if (map.isStyleLoaded()) {
+    setupMVTLayers();
+    renderLayers();
+  } else {
+    map.once('load', () => {
+      setupMVTLayers();
+      renderLayers();
+    });
+  }
 
+  map.on('error', (e) => {
+    if (e.sourceId === 'tiles-source' && e.error && e.error.status === 404) {
+      console.warn('Kafel nie istnieje, ignoruję.');
+      e.preventDefault();
+    }
+  });
+
+}, [zoomLevel, filteredFeatures, regionGeometry]);
+
+
+  // Popup logic
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (popupRef.current && !popupRef.current.contains(event.target)) {
-        setPopup(null);
-      }
+      if (popupRef.current && !popupRef.current.contains(event.target)) setPopup(null);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Zoom to region
   useEffect(() => {
     if (!mapRef.current || !regionGeometry) return;
-
     try {
       const coordinates = regionGeometry.features[0].geometry.coordinates;
-
       let bounds = new maplibregl.LngLatBounds();
-      const coordSets = regionGeometry.features[0].geometry.type === 'Polygon'
-        ? [coordinates]
-        : coordinates;
-
-      coordSets.forEach(polygon => {
-        polygon[0].forEach(coord => {
-          bounds.extend(coord);
-        });
-      });
-
-      mapRef.current.fitBounds(bounds, {
-        padding: 40,
-        duration: 800
-      });
+      const coordSets = regionGeometry.features[0].geometry.type === 'Polygon' ? [coordinates] : coordinates;
+      coordSets.forEach(polygon => polygon[0].forEach(coord => bounds.extend(coord)));
+      mapRef.current.fitBounds(bounds, { padding: 40, duration: 800 });
     } catch (e) {
-      console.error("Błąd przy zoomowaniu do regionu:", e);
+      console.error('Błąd przy zoomowaniu do regionu:', e);
     }
   }, [regionGeometry]);
 
@@ -309,21 +300,57 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
 
       <div ref={mapContainer} style={{ width: '100%', flex: "90%", borderRadius: '8px 8px 0 0', boxShadow: '0 0 5px rgba(0,0,0,0.2)' }} />
 
-      {/* Legenda */}
-      {/* <div
+       {/* Przycisk otwierający legendę */}
+    <button
+      onClick={() => setShowLegend(true)}
+      style={{
+        position: 'absolute',
+        bottom: '20px',
+        right: '20px',
+        padding: '6px 10px',
+        borderRadius: '4px',
+        backgroundColor: '#fff',
+        border: '1px solid #999',
+        cursor: 'pointer',
+        zIndex: 1001
+      }}
+    >
+      Pokaż legendę
+    </button>
+
+    {/* Legenda */}
+    {showLegend && (
+      <div
         style={{
           position: 'absolute',
-          bottom: '20px',
+          bottom: '60px', // wyżej niż przycisk
           right: '20px',
           marginBottom: '20px',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
           padding: '10px',
           borderRadius: '6px',
           boxShadow: '0 0 5px rgba(0,0,0,0.3)',
           fontSize: '12px',
           maxWidth: '180px',
+          zIndex: 1000,
         }}
       >
+        {/* Przycisk zamykania legendy */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setShowLegend(false)}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px',
+            }}
+          >
+            ×
+          </button>
+        </div>
+
         <div>
           <strong>Rok wykonania</strong>
         </div>
@@ -332,7 +359,6 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
           const maxYear = 2025;
           const totalSteps = colorPalette.length;
           const step = Math.ceil((maxYear - minYear + 1) / totalSteps);
-
 
           const isLast = index === totalSteps - 1;
           const rangeEnd = maxYear - index * step;
@@ -355,7 +381,8 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange,   m
             </div>
           );
         })}
-      </div> */}
+      </div>
+    )}
     <Box className="custom-slider-container">
       <p> Wybierz przedział czasowy</p>
       <Slider
