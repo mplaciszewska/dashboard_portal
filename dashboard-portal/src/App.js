@@ -13,6 +13,7 @@ import { Ring } from 'ldrs/react';
 import TerytSelection from './TerytSelection';
 import 'ldrs/react/Ring.css';
 import { useRegionGeometry } from './hooks/useRegionGeometry';
+import { handleDownloadPDF } from './hooks/useGenerateReportPdf';
 
 function App() {
   const [polygon, setPolygon] = useState(null);
@@ -64,12 +65,17 @@ function App() {
     return polygonArea > 0 ? filteredFeatures.length / polygonArea : 0;
   }, [filteredFeatures, polygonArea]);
 
-  const regionGeometry = useRegionGeometry(region.level, region.kod);
+  const regionGeometry = useRegionGeometry(region.level, region.kod, region.nazwa);
+  
 
   return (
     <div className="App">
       <header className="App-header">
+        <div>
+          
+        </div>
         <h1>Dashboard Portal</h1>
+        <button onClick={() => handleDownloadPDF(filteredFeatures, polygonArea, regionGeometry)}>Pobierz raport PDF</button>
       </header>
       <div className="main-content">
         <div
