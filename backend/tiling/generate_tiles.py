@@ -11,7 +11,7 @@ class MVTGenerator:
         self.geom_column = geom_column
 
     def get_extent(self):
-        """Zwraca bounding box wszystkich danych w tabeli w formacie (minx, miny, maxx, maxy)"""
+        """Zwraca bounding box wszystkich danych w tabeli"""
         sql = f"""
         SELECT ST_XMin(ST_Extent({self.geom_column})), 
                ST_YMin(ST_Extent({self.geom_column})), 
@@ -27,8 +27,9 @@ class MVTGenerator:
             else:
                 raise ValueError("Nie udało się pobrać extentu danych.")
 
-    def get_tile_stats(self, z, x, y):
-        """Policz ile obiektów w danym kaflu"""
+
+    def count_features_in_tile(self, z, x, y):
+        """Liczy obiekty w danym kaflu"""
         sql = f"""
         SELECT COUNT(*)
         FROM {self.table_name}
@@ -42,8 +43,7 @@ class MVTGenerator:
             return cur.fetchone()[0]
         
 
-
-    def dump_global_stats(self, out_file="stats.json"):
+    def save_stats(self, out_file="stats.json"):
         sql = f"""
         SELECT 
             rok_wykonania,
@@ -56,26 +56,27 @@ class MVTGenerator:
             cur.execute(sql)
             rows = cur.fetchall()
         
-        stats = {
-            "years": {},
-            "resolution": {},
-            "color": {},
-            "type": {}
-        }
+        stats = {"photo_type": {},
+                  "years": {},
+                  "color": {},
+                 }
+
         for rok, res, kolor, typ in rows:
+            if typ not in stats["photo_type"]:
+                stats["photo_type"][typ] = {"resolution": {}}
+            try:
+                numeric_res = float(res)
+            except:
+                numeric_res = res
+
+            stats["photo_type"][typ]["resolution"][numeric_res] = stats["photo_type"][typ]["resolution"].get(numeric_res, 0) + 1
             if rok:
                 stats["years"][rok] = stats["years"].get(rok, 0) + 1
-            if res:
-                stats["resolution"][res] = stats["resolution"].get(res, 0) + 1
             if kolor:
                 stats["color"][kolor] = stats["color"].get(kolor, 0) + 1
-            if typ:
-                stats["type"][typ] = stats["type"].get(typ, 0) + 1
-
+            
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(stats, f, ensure_ascii=False, indent=2)
-
-        print(f"Zapisano globalne statystyki do {out_file}")
 
 
     def get_dynamic_limit(self, n, z, max_clusters=50000):
@@ -86,7 +87,7 @@ class MVTGenerator:
             percent = 0.3
         elif z <= 10:
             percent = 0.55
-        elif z <= 12:
+        elif z < 12:
             percent = 0.8
         else:
             return n
@@ -105,13 +106,13 @@ class MVTGenerator:
         else: return 125
 
     def get_tile(self, z, x, y):
-        """Generuje kafel MVT z dynamicznym DBSCAN lub pełnymi punktami"""
-        n = self.get_tile_stats(z, x, y)
+        """Generuje kafel MVT z dynamicznym DBSCAN lub pełnymi danymi"""
+        n = self.count_features_in_tile(z, x, y)
         if n == 0:
             return None
 
-        # 🔹 dla wysokich zoomów: pełne dane, bez DBSCAN
-        if z >= 13:
+        # Pobieranie pełnych danych dla wysokich zoomów
+        if z >= 12:
             sql = f"""
             WITH mvtgeom AS (
                 SELECT ST_AsMVTGeom(
@@ -138,7 +139,7 @@ class MVTGenerator:
             params = (z, x, y, z, x, y)
 
         else:
-            # 🔹 dla niższych zoomów: DBSCAN + procent obiektów
+            # Pobieranie danych i grupowanie DBSCAN dla niższych zoomów
             eps_value = self.get_dynamic_eps(n)
             max_clusters = self.get_dynamic_limit(n, z)
 
@@ -146,7 +147,8 @@ class MVTGenerator:
             WITH clusters AS (
                 SELECT 
                     COALESCE(cluster_id::text, 'single_' || id::int) AS cid,
-                    ST_Transform({self.geom_column}, 3857) AS geom_3857
+                    ST_Transform({self.geom_column}, 3857) AS geom_3857,
+                    id
                 FROM (
                     SELECT 
                         {self.geom_column},
@@ -160,10 +162,14 @@ class MVTGenerator:
                     )
                 ) sub
             ),
+
             grouped AS (
-                SELECT ST_Centroid(ST_Collect(geom_3857)) AS geom_3857
-                FROM clusters
-                GROUP BY cid
+            SELECT 
+                ST_Centroid(ST_Collect(geom_3857)) AS geom_3857,
+                CAST(AVG(rok_wykonania) AS INTEGER) AS rok_wykonania
+            FROM clusters
+            JOIN {self.table_name} USING(id)
+            GROUP BY cid
             ),
             limited AS (
                 SELECT * 
@@ -176,7 +182,7 @@ class MVTGenerator:
                         geom_3857,
                         ST_Transform(ST_TileEnvelope(%s, %s, %s), 3857),
                         4096, 0, true
-                    ) AS geom
+                    ) AS geom, rok_wykonania
                 FROM limited
             )
             SELECT ST_AsMVT(mvtgeom.*, 'layer', 4096, 'geom') AS tile
@@ -221,15 +227,14 @@ if __name__ == "__main__":
     }
 
     generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze", geom_column="geometry")
-    tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=11)
+    tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
 
     for z, x, y, tile_bytes in tiles:
-        folder = f"tiles11/{z}/{x}"
+        folder = f"tiles12/{z}/{x}"
         os.makedirs(folder, exist_ok=True)
         filename = f"{folder}/{y}.pbf"
         with open(filename, "wb") as f:
             f.write(tile_bytes)
         print(f"Kafel zapisany: {filename}")
     
-    generator.dump_global_stats("tiles11/global_stats.json")
-
+    generator.save_stats("tiles12/stats.json")

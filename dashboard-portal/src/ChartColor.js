@@ -1,47 +1,48 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './ChartColor.css';
+import { colorPalette, rgba } from './theme/colors';
 
 const COLORS = [
-  '#23687B',
-  '#2887A1',
-  '#79A7AC',
-  '#B5C8B8',
-  '#EDEAC2',
-  '#D6BD8D',
-  '#BD925A',
-  '#A16928',
+  rgba(colorPalette[7]),
+  rgba(colorPalette[6]),
+  rgba(colorPalette[5]),
+  rgba(colorPalette[4]),
+  rgba(colorPalette[1]),
+  rgba(colorPalette[0]),
+  rgba(colorPalette[3]),
+  rgba(colorPalette[2]),
 ];
   
-function groupColors(features) {
-  if(!Array.isArray(features)) return [];
-
+function groupColors(features, stats) {
   const counts = {};
 
-  features.forEach((feature) => {
-    const kolor = feature?.properties?.kolor ?? 'Nieznany';
-    counts[kolor] = (counts[kolor] || 0) + 1;
-  });
+  if (stats) {
+    Object.entries(stats.color || {}).forEach(([color, value]) => {
+      counts[color] = value;
+    });
+  } else if (Array.isArray(features)) {
+    features.forEach((feature) => {
+      const kolor = feature?.properties?.kolor ?? 'Nieznany';
+      counts[kolor] = (counts[kolor] || 0) + 1;
+    });
+  }
 
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
 
-export function ChartColor({ features }) {
+
+export function ChartColor({ features, stats }) {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    if (!Array.isArray(features) || features.length === 0) {
-      setData([]);
-      return;
-    }
-
     const timeout = setTimeout(() => {
-      const result = groupColors(features);
+      const result = groupColors(features, stats);
       setData(result);
     }, 300); // debounce 300ms
 
     return () => clearTimeout(timeout);
-  }, [features]);
+  }, [features, stats]);
 
     // if (data.length === 0) return <p style={{ padding: '1rem' }}>Brak danych do wyświetlenia.</p>;
 

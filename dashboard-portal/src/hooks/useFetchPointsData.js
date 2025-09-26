@@ -39,23 +39,9 @@ export function useFetchPointsData({ limit = 500000, polygon = null }) {
 
           await recursiveFetchPoly();
         } else {
-          const recursiveFetch = async () => {
-            console.log("Fetchowanie danych...");
-            const response = await fetch(`http://localhost:8000/api/zdjecia?skip=${skip.current}&limit=${limit}`);
-            console.log("Odpowiedź z serwera:", response);
-            const data = await response.json();
-
-            if (isCancelled) return;
-            if (!data.features || data.features.length === 0) {
-              setLoading(false);
-              return;
-            }           
-            setFeatures(prev => [...prev, ...data.features]);
-            skip.current += limit;
-            await recursiveFetch();
-          };
-
-          await recursiveFetch();
+          // set features to something because vector tiles are here
+          setFeatures([]);
+          setLoading(false);
         }
       } catch (err) {
         console.error('Błąd podczas pobierania danych:', err);

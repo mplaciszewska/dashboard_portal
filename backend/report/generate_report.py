@@ -1,23 +1,13 @@
-# app/report.py
 import io
-import matplotlib.pyplot as plt
 from datetime import datetime
-from statistics import mean
 from collections import Counter
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import Paragraph, Spacer, Table, Image, PageBreak
-from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
 from .template import TemplateBuilder
 from .style import StyleBuilder
 from .settings import ReportSettings
-
-from utils.features import Feature, FeatureProperties, Region, RegionProperties
-from reportlab.platypus import TableStyle
-from reportlab.lib import colors
-
-from reportlab.platypus import TableStyle
-from reportlab.lib import colors
+from ..models import Feature
 
 def generate_report_pdf(data: dict) -> bytes:
     date = datetime.now().strftime('%Y-%m-%d  %H:%M:%S')
@@ -29,9 +19,9 @@ def generate_report_pdf(data: dict) -> bytes:
 
     styles_builder = StyleBuilder(
         ReportSettings(
-            "data/fonts/LiberationSans-Regular.ttf",
-            "data/fonts/LiberationSans-Bold.ttf",
-            "data/fonts/LibreBaskerville-Bold.ttf"
+            "backend/data/fonts/LiberationSans-Regular.ttf",
+            "backend/data/fonts/LiberationSans-Bold.ttf",
+            "backend/data/fonts/LibreBaskerville-Bold.ttf"
         )
     )
     styles_builder.register_fonts()
@@ -41,7 +31,7 @@ def generate_report_pdf(data: dict) -> bytes:
     elements = []
     
     elements.append(Spacer(1, 12))
-    # --- Tytuł i data raportu
+
     elements.append(Paragraph("Dashboard Portal", styles['title']))
     elements.append(Paragraph("Raport", styles['subtitle']))
     elements.append(Spacer(1, 24))
@@ -55,7 +45,6 @@ def generate_report_pdf(data: dict) -> bytes:
     count = len(features)
     density = count / area_size if area_size > 0 else 0
 
-    # --- Podstawowa tabela
     table_data = {
         "Obszar": area_name,
         "Powierzchnia obszaru": f"{area_size:.2f} km²",
@@ -87,11 +76,9 @@ def generate_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 24))
 
 
-    # --- Lata wykonania
     years = [f.properties.rok_wykonania for f in features if f.properties.rok_wykonania is not None]
     if years:
         years_count = Counter(years)
-        # Sort by count descending, then by year ascending
         sorted_years = sorted(years_count.items(), key=lambda x: (-x[1], x[0]))
         table_data = [["Rok", "Liczba zdjęć"]] + [[year, count] for year, count in sorted_years]
         table = Table(table_data)
@@ -106,7 +93,6 @@ def generate_report_pdf(data: dict) -> bytes:
         elements.append(table)
         elements.append(Spacer(1, 12))
 
-    # --- Typ zdjęcia
     types_count = Counter(f.properties.charakterystyka_przestrzenna or "Nieznany" for f in features)
     table_data = [["Skala/GSD", "Liczba zdjęć"]] + [[k, v] for k,v in types_count.items()]
     table = Table(table_data)
@@ -121,7 +107,6 @@ def generate_report_pdf(data: dict) -> bytes:
     elements.append(table)
     elements.append(Spacer(1, 12))
 
-    # --- Kolor / Mono
     colors_count = Counter(f.properties.kolor or "Nieznany" for f in features)
     table_data = [["Rodzaj zdjęcia", "Liczba zdjęć"]] + [[k,v] for k,v in colors_count.items()]
     table = Table(table_data)
@@ -136,7 +121,6 @@ def generate_report_pdf(data: dict) -> bytes:
     elements.append(table)
     elements.append(Spacer(1, 12))
     
-    # Numery zgłoszeń
     zgłoszenia = [f.properties.numer_zgloszenia for f in features]
     table_data = [["Numer zgłoszenia", "Liczba zdjęć"]] + [[num, zgłoszenia.count(num)] for num in set(zgłoszenia)]
     table = Table(table_data)
@@ -152,8 +136,6 @@ def generate_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 12))
 
     
-
-    # --- Generowanie PDF
     doc.build(elements)
     buffer.seek(0)
     return buffer.read()

@@ -2,17 +2,21 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useState, useEffect } from 'react';
 import './ChartYear.css';
 
-function groupYears(features) {
-  if (!Array.isArray(features)) return [];
-
+function groupYears(features, stats) {
   const bins = {};
 
-  features.forEach(feature => {
-    const year = feature.properties?.rok_wykonania;
-    if (typeof year === 'number' && year >= 1900 && year <= 2100) {
-      bins[year] = (bins[year] || 0) + 1;
-    }
-  })
+  if (stats) {
+    Object.entries(stats.years).forEach(([year, count]) => {
+      bins[year] = count;
+    });
+  } else {
+    features.forEach(feature => {
+      const year = feature.properties?.rok_wykonania;
+      if (typeof year === 'number' && year >= 1900 && year <= 2100) {
+        bins[year] = (bins[year] || 0) + 1;
+      }
+    });
+  }
 
   return Object.entries(bins)
     .map(([year, count]) => ({
@@ -23,22 +27,17 @@ function groupYears(features) {
     .sort((a, b) => a.sortKey - b.sortKey);
 }
 
-export function ChartYear({ features }) {
+export function ChartYear({ features, stats }) {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    if (!Array.isArray(features) || features.length === 0) {
-      setData([]);
-      return;
-    }
-
     const timeout = setTimeout(() => {
-      const result = groupYears(features);
+      const result = groupYears(features, stats);
       setData(result);
     }, 300); // debounce na 300ms
 
     return () => clearTimeout(timeout);
-  }, [features]);
+  }, [features, stats]);
 
   // if (data.length === 0) return <p style={{ padding: '1rem' }}>Brak danych do wyświetlenia.</p>;
 

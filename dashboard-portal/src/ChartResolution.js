@@ -18,66 +18,85 @@ function calculateStats(data) {
   };
 }
 
-function groupResolution(features) {
-    if (!Array.isArray(features)) return [];
-
+function groupResolution(features, stats) {
+  if (stats && stats.photo_type) {
     const binsAnalog = {};
     const binsCyfr = {};
-    
-    features.forEach(feature => {
-        let type = feature.properties?.zrodlo_danych;
-        if (type == "Zdj. cyfrowe") {
-            let resolution = feature.properties?.charakterystyka_przestrzenna;
-            resolution = Math.round(resolution * 100);             
-            binsCyfr[resolution] = (binsCyfr[resolution] || 0) + 1;
-        } else if(type == "Zdj. analogowe") {
-            let resolution = feature.properties?.charakterystyka_przestrzenna;
-            const numeric = typeof resolution === 'string'
-                ? parseFloat(resolution.replace(/[^0-9.]/g, ''))
-                : resolution;
 
-            if (isNaN(numeric)) return;
+    Object.entries(stats.photo_type).forEach(([photo_type, value]) => {
+      const targetBin = photo_type.includes('analog') ? binsAnalog : binsCyfr;
 
-            const rounded = Math.floor(numeric / 100) * 100;
-
-            binsAnalog[rounded] = (binsAnalog[rounded] || 0) + 1;
-        }
-    })
+      Object.entries(value.resolution || {}).forEach(([res, count]) => {
+        // konwersja resolution do liczby jeśli możliwe
+        const numeric = isNaN(res) ? res : Number(res);
+        targetBin[numeric] = (targetBin[numeric] || 0) + count;
+      });
+    });
 
     const normalize = bins =>
-        Object.entries(bins)
-        .map(([key, count]) => ({
-            name: key,
-            count: count,
-            sortKey: parseFloat(key.replace(/[^0-9.]/g, '')) || 0
+      Object.entries(bins)
+        .map(([name, count]) => ({
+          name,
+          count,
+          sortKey: parseFloat(name) || 0
         }))
         .sort((a, b) => a.sortKey - b.sortKey);
 
     return {
-        analogData: normalize(binsAnalog),
-        cyfrData  : normalize(binsCyfr)
+      analogData: normalize(binsAnalog),
+      cyfrData: normalize(binsCyfr)
     };
+  }
+
+
+  const binsAnalog = {};
+  const binsCyfr = {};
+  features.forEach(feature => {
+    const type = feature.properties?.zrodlo_danych;
+    let resolution = feature.properties?.charakterystyka_przestrzenna;
+
+    if (type === 'Zdj. cyfrowe') {
+      resolution = Math.round(resolution * 100);
+      binsCyfr[resolution] = (binsCyfr[resolution] || 0) + 1;
+    } else if (type === 'Zdj. analogowe') {
+      const numeric = typeof resolution === 'string'
+        ? parseFloat(resolution.replace(/[^0-9.]/g, ''))
+        : resolution;
+      if (isNaN(numeric)) return;
+      const rounded = Math.floor(numeric / 100) * 100;
+      binsAnalog[rounded] = (binsAnalog[rounded] || 0) + 1;
+    }
+  });
+
+  const normalize = bins =>
+    Object.entries(bins)
+      .map(([name, count]) => ({
+        name,
+        count,
+        sortKey: parseFloat(name) || 0
+      }))
+      .sort((a, b) => a.sortKey - b.sortKey);
+
+  return {
+    analogData: normalize(binsAnalog),
+    cyfrData: normalize(binsCyfr)
+  };
 }
 
-export function ChartResolution({features}) {
+
+export function ChartResolution({ features, stats, isTileMode }) {
   const [analogData, setAnalogData] = useState([]);
   const [cyfrData, setCyfrData] = useState([]);
-  
+
   useEffect(() => {
-      if (!Array.isArray(features) || features.length === 0) {
-          setAnalogData([]);
-          setCyfrData([]);
-          return;
-      }
-  
-      const timeout = setTimeout(() => {
-          const { analogData, cyfrData } = groupResolution(features);
-          setAnalogData(analogData);
-          setCyfrData(cyfrData);
-      }, 300); // debounce 300ms
-  
-      return () => clearTimeout(timeout);
-  }, [features]);
+    const timeout = setTimeout(() => {
+      const { analogData, cyfrData } = groupResolution(features, isTileMode ? stats : null);
+      setAnalogData(analogData);
+      setCyfrData(cyfrData);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [features, stats, isTileMode]);
 
 
   const cyfStats = calculateStats(cyfrData);

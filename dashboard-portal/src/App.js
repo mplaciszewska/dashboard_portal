@@ -15,47 +15,71 @@ import 'ldrs/react/Ring.css';
 import { useRegionGeometry } from './hooks/useRegionGeometry';
 import { handleDownloadPDF } from './hooks/useGenerateReportPdf';
 
+import { colorPalette, rgba } from "./theme/colors";
+
+export function generateYearGroups(minYear, maxYear) {
+  const groupCount = colorPalette.length;
+  const range = maxYear - minYear + 1;
+  const step = Math.ceil(range / groupCount);
+
+  return colorPalette.map((c, i) => {
+    const start = minYear + i * step;
+    const end = Math.min(minYear + (i + 1) * step - 1, maxYear);
+    return {
+      range: [start, end],
+      label: `${start}-${end}`,
+      color: c,
+    };
+  });
+}
+
 function App() {
   const [polygon, setPolygon] = useState(null);
   const { features, loading } = useFetchPointsData({ limit: 500000, polygon });
   const [yearRange, setYearRange] = useState([1950, 2025]);
   const hasUserChangedRange = useRef(false);
   const [region, setRegion] = useState({ level: null, kod: null });
+  const [isTileMode, setIsTileMode] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [yearGroups, setYearGroups] = useState(null);
 
   const handleYearRangeChange = (newRange) => {
     hasUserChangedRange.current = true;
     setYearRange(newRange);
   };
 
-  const filteredFeatures = useMemo(() => {
-    return features.filter((f) => {
-      const year = f.properties.rok_wykonania;
-      return year >= yearRange[0] && year <= yearRange[1];
+  useEffect(() => {
+    fetch('http://localhost:8000/tiling/tiles12/stats.json')
+      .then(res => res.json())
+      .then(data => {
+        setStats(data);
+        const yearsArray = data.years ? Object.keys(data.years).map(y => parseInt(y)) : [];
+        const years = yearsArray.filter(y => !isNaN(y));
+        const minYear = Math.min(...years);
+        const maxYear = Math.max(...years);
+        setYearGroups(generateYearGroups(minYear, maxYear));
+      })
+      .catch(err => console.error('Błąd wczytywania stats.json', err));
+  }, []);
+
+  const [minYear, maxYear, filteredFeatures] = useMemo(() => {
+    if (!features.length) return [1950, 2025, []];
+
+    let min = Infinity;
+    let max = -Infinity;
+    const filtered = features.filter(f => {
+      const y = f.properties?.rok_wykonania;
+      if (typeof y === 'number') {
+        if (y < min) min = y;
+        if (y > max) max = y;
+        return y >= yearRange[0] && y <= yearRange[1];
+      }
+      return false;
     });
+
+    return [min, max, filtered];
   }, [features, yearRange]);
 
-  const [minYear, maxYear] = useMemo(() => {
-    if (!features.length) return [1950, 2025];
-
-    return features.reduce(
-      ([min, max], f) => {
-        const y = f.properties?.rok_wykonania;
-        if (typeof y === 'number' && !isNaN(y)) {
-          return [Math.min(min, y), Math.max(max, y)];
-        }
-        return [min, max];
-      },
-      [Infinity, -Infinity]
-    );
-  }, [features]);
-
-  useEffect(() => {
-    if (!features.length || hasUserChangedRange.current) return;
-
-    if (yearRange[0] !== minYear || yearRange[1] !== maxYear) {
-      setYearRange([minYear, maxYear]);
-    }
-  }, [minYear, maxYear, features]);
 
   const polygonArea = useMemo(() => {
     return polygon ? area(polygon) / 1_000_000 : 313_933;
@@ -67,7 +91,6 @@ function App() {
 
   const regionGeometry = useRegionGeometry(region.level, region.kod, region.nazwa);
   
-
   return (
     <div className="App">
       <header className="App-header">
@@ -110,7 +133,6 @@ function App() {
             ) : null}
             <div style={{ width: '100%', height: '100%' }}>
               <MapComponent
-                features={features}
                 filteredFeatures={filteredFeatures}
                 yearRange={yearRange}
                 setYearRange={handleYearRangeChange}
@@ -118,6 +140,9 @@ function App() {
                 maxYear={maxYear}
                 onPolygonChange={setPolygon}
                 regionGeometry={regionGeometry}
+                isTileMode={isTileMode}
+                setIsTileMode={setIsTileMode}
+                yearGroups={yearGroups || []}
               />
             </div>
             <TerytSelection
@@ -150,6 +175,7 @@ function App() {
               polygonArea={polygonArea}
               featuresPerKm2={featuresPerKm2}
               region={regionGeometry}
+              stats={isTileMode ? stats : null}
             />
             <div
               style={{
@@ -170,7 +196,10 @@ function App() {
                   minWidth: 0,
                 }}
               >
-                <ChartColor features={filteredFeatures} />
+                <ChartColor 
+                  features={filteredFeatures} 
+                  stats={isTileMode ? stats : null}
+                />
               </div>
               <div
                 style={{
@@ -181,7 +210,10 @@ function App() {
                   minWidth: 0,
                 }}
               >
-                <ChartPhotoType features={filteredFeatures} />
+                <ChartPhotoType 
+                  features={filteredFeatures}
+                  stats={isTileMode ? stats : null}
+                  />
               </div>
             </div>
           </div>
@@ -197,7 +229,11 @@ function App() {
               minWidth: 0,
             }}
           >
-            <ChartResolution features={filteredFeatures} />
+            <ChartResolution 
+            features={filteredFeatures}
+            stats={isTileMode ? stats : null}
+            isTileMode={isTileMode}
+             />
           </div>
         </div>
         <div
@@ -213,10 +249,16 @@ function App() {
           }}
         >
           <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
-            <ChartYear features={filteredFeatures} />
+            <ChartYear 
+            features={filteredFeatures}
+            stats={isTileMode ? stats : null}
+            />
           </div>
           <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
-            <ReportNumberTable features={filteredFeatures} />
+            <ReportNumberTable 
+            features={filteredFeatures}
+            stats={isTileMode ? stats : null}
+            />
           </div>
         </div>
       </div>

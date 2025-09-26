@@ -1,7 +1,15 @@
 import React from 'react';
 import './SummaryComponent.css';
 
-function SummaryComponent({ count, polygonArea, featuresPerKm2, region }) {
+
+function SummaryComponent({ count, polygonArea, featuresPerKm2, region, stats }) {
+
+  const summaryCount = stats
+    ? Object.values(stats.years).reduce((sum, val) => sum + val, 0)
+    : count;
+  console.log("Stats w SummaryComponent:", stats);
+  const summaryFeaturesPerKm2 = stats ? (summaryCount / polygonArea) : featuresPerKm2;
+
   return (
     <div className="summary-container">
       <h4>Podsumowanie:</h4>
@@ -12,7 +20,7 @@ function SummaryComponent({ count, polygonArea, featuresPerKm2, region }) {
           </div>
         )}
         <div className="summary-element">
-          {count}
+          {summaryCount}
           <p>zdjęć</p>
         </div> 
         <div className="summary-element">
@@ -20,7 +28,7 @@ function SummaryComponent({ count, polygonArea, featuresPerKm2, region }) {
           <p>km²</p>   
         </div>
         <div className="summary-element">
-          {featuresPerKm2.toFixed(0)}
+          {summaryFeaturesPerKm2.toFixed(0)}
           <p>zdjęć/km²</p>
         </div>
       </div>

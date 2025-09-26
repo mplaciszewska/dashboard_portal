@@ -6,17 +6,20 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useDrawPolygon } from './hooks/useDrawPolygon';
-import { ScreenGridLayer } from '@deck.gl/aggregation-layers';
 import './MapComponent.css';
 import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { GeoJsonLayer } from '@deck.gl/layers';
-import turfSimplify from '@turf/simplify';
+import { rgba, colorPalette, colors } from "./theme/colors";
 
+export function getColorForYear(year, yearGroups) {
+  const group = yearGroups.find(({ range }) => year >= range[0] && year <= range[1]);
+  return group ? group.color : colors.primary;
+}
 
-function MapComponent({ features, filteredFeatures, yearRange, setYearRange, minYear,
-  maxYear, onPolygonChange, regionGeometry }) {
+function MapComponent({ filteredFeatures, yearRange, setYearRange, minYear,
+  maxYear, onPolygonChange, regionGeometry, isTileMode, setIsTileMode, yearGroups }) {
 
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
@@ -28,44 +31,30 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
   const [popup, setPopup] = useState(null);
   const [showLegend, setShowLegend] = useState(false);
 
-  
   const handleYearChange = (event, newValue) => {
     setYearRange(newValue);
   };
 
-  const colorPalette = [
-    [35, 104, 123, 130],
-    [40, 135, 161, 130],
-    [121, 167, 172, 130],
-    [181, 200, 184, 130],
-    [237, 234, 194, 130],
-    [214, 189, 141, 130],
-    [189, 146, 90, 130],
-    [161, 105, 40, 130],
-  ];
+  const colorExpression = React.useMemo(() => {
+    if (!yearGroups || !yearGroups.length) return colors.primary;
 
-  function getColorForYear(year) {
-    const minYear = 1950;
-    const maxYear = 2025;
-    const range = maxYear - minYear + 1;
-
-    if (year < minYear || year > maxYear || isNaN(year)) {
-      return [200, 200, 200, 180];
-    }
-
-    const normalized = (year - minYear) / range;
-    let index = Math.floor(normalized * colorPalette.length);
-
-    if (index >= colorPalette.length) index = colorPalette.length - 1;
-
-    const reversedIndex = colorPalette.length - 1 - index;
-
-    return [...colorPalette[reversedIndex], 180];
-  }
+    return [
+      "case",
+      ...yearGroups.flatMap(g => ([
+        ["all",
+          [">=", ["get", "rok_wykonania"], g.range[0]],
+          ["<=", ["get", "rok_wykonania"], g.range[1]]
+        ],
+        rgba(g.color)
+      ])),
+      colors.primary
+    ];
+  }, [yearGroups]);
 
   useEffect(() => {
     if (onPolygonChange) {
       if (drawnPolygon) {
+        setIsTileMode(false);
         onPolygonChange(drawnPolygon);
       } else if (regionGeometry) {
         let geometry = regionGeometry.type === "FeatureCollection"
@@ -73,9 +62,11 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
           : regionGeometry.type === "Feature"
             ? regionGeometry.geometry
             : regionGeometry;
+        setIsTileMode(false);
         onPolygonChange(geometry);
       } else {
         onPolygonChange(null);
+        setIsTileMode(true);
       }
     }
   }, [drawnPolygon, regionGeometry, onPolygonChange]);
@@ -103,55 +94,74 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
     return () => map.remove();
   }, []);
 
-  // Layer rendering
+
+  // MVTLayers
   useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const setupMVTLayers = () => {
+      if (!map.getSource('tiles-source')) {
+        map.addSource('tiles-source', {
+          type: 'vector',
+          tiles: ['http://127.0.0.1:8000/tiling/tiles12/{z}/{x}/{y}.pbf'],
+          minzoom: 2,
+          maxzoom: 12,
+          scheme: 'xyz',
+        });
+
+        map.addLayer({
+          id: 'tiles-layer',
+          type: 'circle',
+          source: 'tiles-source',
+          'source-layer': 'layer',
+          paint: {
+            'circle-radius': 2.5,
+            'circle-opacity': 0.5,
+            'circle-color': colorExpression
+          },
+          layout: { visibility: isTileMode ? 'visible' : 'none' },
+        });
+      } else {
+        map.setPaintProperty('tiles-layer', 'circle-color', colorExpression);
+        map.setLayoutProperty('tiles-layer', 'visibility', isTileMode ? 'visible' : 'none');
+      }
+
+      map.on('error', (e) => {
+        if (e.sourceId === 'tiles-source' && e.error && e.error.status === 404) {
+          console.warn('Kafel nie istnieje, ignoruję.');
+          e.preventDefault();
+        }
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      setupMVTLayers();
+    } else {
+      map.once('load', setupMVTLayers);
+    }
+
+  }, [isTileMode, yearGroups]);
+
+useEffect(() => {
   if (!mapRef.current) return;
   const map = mapRef.current;
 
-  const setupMVTLayers = () => {
-    // Dodaj źródło i warstwę MVT tylko raz
-    if (!map.getSource('tiles-source')) {
-      map.addSource('tiles-source', {
-        type: 'vector',
-        tiles: ['http://127.0.0.1:8000/tiling/tiles11/{z}/{x}/{y}.pbf'],
-        minzoom: 2,
-        maxzoom: 11,
-        scheme: 'xyz',
-      });
+  if (map.getLayer('tiles-layer')) {
+    map.setPaintProperty('tiles-layer', 'circle-color', colorExpression);
+    map.setLayoutProperty('tiles-layer', 'visibility', isTileMode ? 'visible' : 'none');
+  }
+}, [yearGroups, isTileMode]);
 
-      map.addLayer({
-        id: 'tiles-layer',
-        type: 'circle',
-        source: 'tiles-source',
-        'source-layer': 'layer',
-        paint: {
-          'circle-radius': 2,
-          'circle-color': 'blue',
-        },
-        layout: {
-          visibility: zoomLevel < 12 ? 'visible' : 'none',
-        },
-      });
-    }
-  };
 
-  const renderLayers = () => {
+
+  // Deck.GL ScatterplotLayer + GeoJsonLayer
+  useEffect(() => {
     if (!overlayRef.current) return;
 
-    // Pokaż lub ukryj warstwę MVT w zależności od zoomLevel
-    if (map.getLayer('tiles-layer')) {
-      map.setLayoutProperty(
-        'tiles-layer',
-        'visibility',
-        zoomLevel < 12 ? 'visible' : 'none'
-      );
-    }
+    const layers = [];
 
-    let layer;
-    if (zoomLevel >= 8) {
-      // ScatterplotLayer dla wysokich zoomów
-      setHoverInfo(null);
-      layer = new ScatterplotLayer({
+    if (!isTileMode) {
+      layers.push(new ScatterplotLayer({
         id: 'scatterplot-layer',
         data: filteredFeatures,
         getPosition: d => d.geometry.coordinates,
@@ -159,8 +169,8 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
         getRadius: () => 1,
         radiusScale: 1 + Math.max(0, Math.pow((zoomLevel - 7), 1.2) * 0.7),
         radiusMinPixels: 1,
-        radiusMaxPixels: 4,
-        getFillColor: d => getColorForYear(d.properties?.rok_wykonania),
+        radiusMaxPixels: 3,
+        getFillColor: d => getColorForYear(d.properties.rok_wykonania, yearGroups),
         pickable: true,
         onClick: ({ object, x, y }) => setPopup({
           x, y,
@@ -171,10 +181,14 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
           typ_zdjecia: object?.properties?.zrodlo_danych || null,
           nr_zgloszenia: object?.properties?.numer_zgloszenia || null,
         }),
-      });
+        onHover: ({ isHovering }) => {
+          if (mapRef.current) {
+            mapRef.current.getCanvas().style.cursor = isHovering ? 'pointer' : '';
+          }
+        }
+      }));
     }
 
-    const layers = layer ? [layer] : [];
     if (regionGeometry) {
       layers.push(new GeoJsonLayer({
         id: 'region-layer',
@@ -190,27 +204,7 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
     }
 
     overlayRef.current.setProps({ layers });
-  };
-
-  if (map.isStyleLoaded()) {
-    setupMVTLayers();
-    renderLayers();
-  } else {
-    map.once('load', () => {
-      setupMVTLayers();
-      renderLayers();
-    });
-  }
-
-  map.on('error', (e) => {
-    if (e.sourceId === 'tiles-source' && e.error && e.error.status === 404) {
-      console.warn('Kafel nie istnieje, ignoruję.');
-      e.preventDefault();
-    }
-  });
-
-}, [zoomLevel, filteredFeatures, regionGeometry]);
-
+  }, [regionGeometry, filteredFeatures, isTileMode, zoomLevel, yearGroups]);
 
   // Popup logic
   useEffect(() => {
@@ -234,6 +228,7 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
       console.error('Błąd przy zoomowaniu do regionu:', e);
     }
   }, [regionGeometry]);
+
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', gap:"0px" }}>
@@ -354,7 +349,7 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
         <div>
           <strong>Rok wykonania</strong>
         </div>
-        {colorPalette.map((color, index) => {
+        {[...colorPalette].reverse().map((color, index) => {
           const minYear = 1950;
           const maxYear = 2025;
           const totalSteps = colorPalette.length;
@@ -376,26 +371,28 @@ function MapComponent({ features, filteredFeatures, yearRange, setYearRange, min
                 }}
               />
               <span>
-                {rangeStart}–{rangeEnd}
+                {rangeStart}-{rangeEnd}
               </span>
             </div>
           );
         })}
       </div>
     )}
-    <Box className="custom-slider-container">
-      <p> Wybierz przedział czasowy</p>
-      <Slider
-        className="custom-slider"
-        value={yearRange}
-        min={minYear}
-        max={maxYear}
-        marks
-        step={1}
-        onChange={handleYearChange}
-        valueLabelDisplay="auto"
-      />
-    </Box>
+    { !isTileMode && (
+      <Box className="custom-slider-container">
+        <p> Wybierz przedział czasowy</p>
+        <Slider
+          className="custom-slider"
+          value={yearRange}
+          min={minYear}
+          max={maxYear}
+          marks
+          step={1}
+          onChange={handleYearChange}
+          valueLabelDisplay="auto"
+        />
+      </Box>
+    )}
     </div>
   );
 }

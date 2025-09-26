@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./TerytSelection.css";
 import Select from 'react-select';
 import Button from '@mui/material/Button';
+import { colors } from "./theme/colors";
 
 function TerytSelection({ onConfirm, style}) {
   const [isVisible, setIsVisible] = useState(false);
@@ -93,7 +94,7 @@ function TerytSelection({ onConfirm, style}) {
     option: (base, state) => ({
       ...base,
       backgroundColor: state.isSelected
-        ? "rgba(128, 0, 32, 0.4)"
+        ? colors.secondary
         : state.isFocused
         ? "#eee"
         : "white",
@@ -134,10 +135,10 @@ function TerytSelection({ onConfirm, style}) {
                   colors: {
                     ...theme.colors,
                     primary25: "#eee",
-                    primary: "rgba(128, 0, 32, 0.4)",
+                    primary: colors.secondary,
                     neutral20: "#999",
                     neutral30: "#666",
-                    primary50: "rgba(128, 0, 32, 0.4)",
+                    primary50: colors.secondary,
                   },
                 })}
               />
@@ -160,10 +161,10 @@ function TerytSelection({ onConfirm, style}) {
                   colors: {
                     ...theme.colors,
                     primary25: "#eee",
-                    primary: "rgba(128, 0, 32, 0.4)",
+                    primary: colors.secondary,
                     neutral20: "#999",
                     neutral30: "#666",
-                    primary50: "rgba(128, 0, 32, 0.4)",
+                    primary50: colors.secondary,
                   },
                 })}
               />
@@ -186,10 +187,10 @@ function TerytSelection({ onConfirm, style}) {
                   colors: {
                     ...theme.colors,
                     primary25: "#eee",
-                    primary: "rgba(128, 0, 32, 0.4)",
+                    primary: colors.secondary,
                     neutral20: "#999",
                     neutral30: "#666",
-                    primary50: "rgba(128, 0, 32, 0.4)",
+                    primary50: colors.secondary,
                   },
                 })}
               />

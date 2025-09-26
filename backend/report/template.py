@@ -1,8 +1,7 @@
-from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph
+from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate
 from reportlab.lib.sequencer import Sequencer
 
 

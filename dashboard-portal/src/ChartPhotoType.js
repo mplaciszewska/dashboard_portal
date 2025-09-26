@@ -8,17 +8,22 @@ const COLORS= {
   "Cyfrowe": '#23687B'
 };
 
-function groupPhotoType(features) {
-    if (!Array.isArray(features)) return [];
-
+function groupPhotoType(features, stats) {
     const counts = {};
 
-    features.forEach(feature => {
-        let photo_type = feature.properties?.zrodlo_danych;
-        counts[photo_type] = (counts[photo_type] || 0) + 1;
-    })
+    if (stats && stats.photo_type) {
+        Object.entries(stats.photo_type).forEach(([photo_type, value]) => {
+            const totalCount = Object.values(value.resolution || {}).reduce((sum, c) => sum + c, 0);
+            counts[photo_type] = totalCount;
+        });
+    } else if (Array.isArray(features)) {
+        features.forEach(feature => {
+            const photo_type = feature.properties?.zrodlo_danych;
+            counts[photo_type] = (counts[photo_type] || 0) + 1;
+        });
+    }
 
-      const labelMap = {
+    const labelMap = {
         "Zdj. analogowe": "Analogowe",
         "Zdj. cyfrowe": "Cyfrowe"
     };
@@ -29,22 +34,18 @@ function groupPhotoType(features) {
     }));
 }
 
-export function ChartPhotoType ( { features }) {
+
+export function ChartPhotoType ( { features, stats }) {
     const [data, setData] = useState([]);
 
     useEffect(() => {
-    if (!Array.isArray(features) || features.length === 0) {
-        setData([]);
-        return;
-    }
+        const timeout = setTimeout(() => {
+            const result = groupPhotoType(features, stats);
+            setData(result);
+        }, 300); // debounce 300ms
 
-    const timeout = setTimeout(() => {
-        const result = groupPhotoType(features);
-        setData(result);
-    }, 300); // debounce 300ms
-
-    return () => clearTimeout(timeout);
-    }, [features]);
+        return () => clearTimeout(timeout);
+    }, [features, stats]);
 
     return (
         <div className="chart-phototype-container">
