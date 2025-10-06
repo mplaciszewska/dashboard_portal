@@ -14,7 +14,7 @@ def get_zdjecia(skip: int = 0, limit: int = 500_000):
         cur = conn.cursor()
         cur.execute("""
             SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia
-            FROM zdjecia_lotnicze
+            FROM zdjecia_lotnicze_poland4
             ORDER BY id
             OFFSET %s LIMIT %s
         """, (skip, limit))
@@ -70,7 +70,7 @@ async def filter_zdjecia(data: PolygonModel):
         cur = conn.cursor()
         cur.execute("""
             SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia
-            FROM zdjecia_lotnicze
+            FROM zdjecia_lotnicze_poland4
             WHERE ST_Intersects(geometry, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326))
             ORDER BY id
             OFFSET %s LIMIT %s

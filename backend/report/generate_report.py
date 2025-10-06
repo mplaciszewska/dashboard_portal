@@ -4,9 +4,9 @@ from collections import Counter
 from reportlab.lib import colors
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
-from .template import TemplateBuilder
-from .style import StyleBuilder
-from .settings import ReportSettings
+from .template.template import TemplateBuilder
+from .template.style import StyleBuilder
+from .template.settings import ReportSettings
 from ..models import Feature
 
 def generate_report_pdf(data: dict) -> bytes:
@@ -19,9 +19,9 @@ def generate_report_pdf(data: dict) -> bytes:
 
     styles_builder = StyleBuilder(
         ReportSettings(
-            "backend/data/fonts/LiberationSans-Regular.ttf",
-            "backend/data/fonts/LiberationSans-Bold.ttf",
-            "backend/data/fonts/LibreBaskerville-Bold.ttf"
+            "backend/report/styles/fonts/LiberationSans-Regular.ttf",
+            "backend/report/styles/fonts/LiberationSans-Bold.ttf",
+            "backend/report/styles/fonts/LibreBaskerville-Bold.ttf"
         )
     )
     styles_builder.register_fonts()

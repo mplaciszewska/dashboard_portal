@@ -5,7 +5,7 @@ import os
 import json
 
 class MVTGenerator:
-    def __init__(self, db_config, table_name="zdjecia_lotnicze", geom_column="geometry"):
+    def __init__(self, db_config, table_name="zdjecia_lotnicze_poland4", geom_column="geometry"):
         self.conn = psycopg2.connect(**db_config)
         self.table_name = table_name
         self.geom_column = geom_column
@@ -226,7 +226,7 @@ if __name__ == "__main__":
         "password": password
     }
 
-    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze", geom_column="geometry")
+    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze_poland4", geom_column="geometry")
     tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
 
     for z, x, y, tile_bytes in tiles:
