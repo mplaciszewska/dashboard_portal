@@ -163,7 +163,7 @@ with saver.engine.begin() as conn:
     """))
     
 layers = fetcher.get_layers()
-bboxes = generate_poland_bboxes(step=100_000)
+bboxes = generate_poland_bboxes(step=50_000)
 
 for i, layer in enumerate(layers):
     print(f"Processing layer {i+1}/{len(layers)}: {layer}")

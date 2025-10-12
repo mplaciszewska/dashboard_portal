@@ -24,7 +24,8 @@ async def generate_report(data: dict):
                 charakterystyka_przestrzenna=str(properties.get("charakterystyka_przestrzenna")) if properties.get("charakterystyka_przestrzenna") is not None else None,
                 zrodlo_danych=properties.get("zrodlo_danych"),
                 url_do_pobrania=properties.get("url_do_pobrania"),
-                numer_zgloszenia=properties.get("numer_zgloszenia")
+                numer_zgloszenia=properties.get("numer_zgloszenia"),
+                dt_pzgik=properties.get("dt_pzgik")
             )
         )
         features.append(feature)

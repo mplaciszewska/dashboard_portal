@@ -15,18 +15,22 @@
     flex-direction: row;
     justify-content: center;
     gap: 4px;
-    background-color: #f0f0f0;
-    border-radius: 8px;
-    padding: 17px 16px;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 10px;
+    padding: 20px 20px;
     margin: 0;
     font-size: 18px;
     align-items: center;
     font-weight: 800;
     flex: 1;
-    min-height: 85px;
+    min-height: 75px;
     box-sizing: border-box;
     text-align: center;
     transition: padding 0.2s ease;
+    box-shadow: 0 0 24px 0 rgba(47, 49, 77, 0.16), 0 0 8px 0 rgba(84, 84, 84, 0.10);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    outline: 1.5px solid rgba(180, 200, 255, 0.12);
 }
 
 .summary-element:has(p:nth-child(2):not(:only-child):not(:empty)) {
@@ -42,7 +46,7 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
-    gap: 10px;
+    gap: 12px;
     margin-top: 15px;
 }
 

@@ -18,6 +18,8 @@ class FeatureProperties(BaseModel):
     zrodlo_danych: Optional[str]
     url_do_pobrania: Optional[str]
     numer_zgloszenia: Optional[str]
+    dt_pzgik: Optional[str]
+    data_nalotu: Optional[str]
 
 class Feature(BaseModel):
     type: str = "Feature"

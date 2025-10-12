@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./TerytSelection.css";
 import Select from 'react-select';
+import sharedSelectStyles from './theme/dropdownStyle';
 import Button from '@mui/material/Button';
 import { colors } from "./theme/colors";
 
@@ -51,59 +52,6 @@ function TerytSelection({ onConfirm, style}) {
       });
   }, [selectedPow]);
 
-  const selectStyles = {
-    container: (base) => ({
-      ...base,
-      width: "100%",
-    }),
-    control: (base) => ({
-      ...base,
-      borderColor: "#999",
-      boxShadow: "none",
-      minHeight: "30px",
-      height: "30px",
-      fontSize: "12px",
-    }),
-    valueContainer: (base) => ({
-      ...base,
-      height: "30px",
-      padding: "0 8px",
-    }),
-    input: (base) => ({
-      ...base,
-      margin: "0px",
-      padding: "0px",
-    }),
-    indicatorsContainer: (base) => ({
-      ...base,
-      height: "30px",
-    }),
-    menu: (base) => ({
-      ...base,
-      zIndex: 9999,
-      fontSize: "12px",
-      margin: 0,
-    }),
-    menuList: (base) => ({
-      ...base,
-      paddingTop: 0,
-      paddingBottom: 0,
-      maxHeight: '180px',
-      overflowY: 'auto', 
-    }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isSelected
-        ? colors.secondary
-        : state.isFocused
-        ? "#eee"
-        : "white",
-      color: "black",
-      fontSize: "12px",
-      padding: "6px 10px",
-      margin: 0,
-    }),
-  };
 
  return (
     <div className="teryt-selection" style={style}>
@@ -129,7 +77,7 @@ function TerytSelection({ onConfirm, style}) {
                   label: w.name,
                 }))}
                 placeholder="-- Województwo --"
-                styles={selectStyles}
+                styles={sharedSelectStyles}
                 theme={(theme) => ({
                   ...theme,
                   colors: {
@@ -154,7 +102,7 @@ function TerytSelection({ onConfirm, style}) {
                   label: p.name,
                 }))}
                 placeholder="-- Powiat --"
-                styles={selectStyles}
+                styles={sharedSelectStyles}
                 isDisabled={!powiaty.length}
                 theme={(theme) => ({
                   ...theme,
@@ -180,7 +128,7 @@ function TerytSelection({ onConfirm, style}) {
                   label: g.name,
                 }))}
                 placeholder="-- Gmina --"
-                styles={selectStyles}
+                styles={sharedSelectStyles}
                 isDisabled={!gminy.length}
                 theme={(theme) => ({
                   ...theme,

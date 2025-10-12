@@ -4,8 +4,10 @@ from POSTGRES import dbname, user, password, host, port
 import os
 import json
 
+# python generate_tiles.py
+
 class MVTGenerator:
-    def __init__(self, db_config, table_name="zdjecia_lotnicze_poland4", geom_column="geometry"):
+    def __init__(self, db_config, table_name="zdjecia_lotnicze_poland5", geom_column="geometry"):
         self.conn = psycopg2.connect(**db_config)
         self.table_name = table_name
         self.geom_column = geom_column
@@ -49,7 +51,10 @@ class MVTGenerator:
             rok_wykonania,
             charakterystyka_przestrzenna,
             kolor,
-            zrodlo_danych
+            zrodlo_danych,
+            numer_zgloszenia,
+            dt_pzgik,
+            data_nalotu
         FROM {self.table_name};
         """
         with self.conn.cursor() as cur:
@@ -59,21 +64,36 @@ class MVTGenerator:
         stats = {"photo_type": {},
                   "years": {},
                   "color": {},
+                  "report_numbers": {},
+                  "dt_pzgik_rok_correlation": {},
+                  "flight_dates": {}
                  }
 
-        for rok, res, kolor, typ in rows:
-            if typ not in stats["photo_type"]:
-                stats["photo_type"][typ] = {"resolution": {}}
+        for rok, res, kolor, zrodlo, numer_zgloszenia, dt_pzgik, data_nalotu in rows:
+            if zrodlo not in stats["photo_type"]:
+                stats["photo_type"][zrodlo] = {"resolution": {}}
             try:
                 numeric_res = float(res)
             except:
                 numeric_res = res
 
-            stats["photo_type"][typ]["resolution"][numeric_res] = stats["photo_type"][typ]["resolution"].get(numeric_res, 0) + 1
+            stats["photo_type"][zrodlo]["resolution"][numeric_res] = stats["photo_type"][zrodlo]["resolution"].get(numeric_res, 0) + 1
             if rok:
                 stats["years"][rok] = stats["years"].get(rok, 0) + 1
             if kolor:
                 stats["color"][kolor] = stats["color"].get(kolor, 0) + 1
+                
+            if numer_zgloszenia:
+                stats["report_numbers"][numer_zgloszenia] = stats["report_numbers"].get(numer_zgloszenia, 0) + 1
+            if data_nalotu:
+                stats["flight_dates"][data_nalotu] = stats["flight_dates"].get(data_nalotu, 0) + 1
+
+
+            # Add correlation between dt_pzgik and rok_wykonania
+            if dt_pzgik and rok:
+                if dt_pzgik not in stats["dt_pzgik_rok_correlation"]:
+                    stats["dt_pzgik_rok_correlation"][dt_pzgik] = {}
+                stats["dt_pzgik_rok_correlation"][dt_pzgik][rok] = stats["dt_pzgik_rok_correlation"][dt_pzgik].get(rok, 0) + 1
             
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(stats, f, ensure_ascii=False, indent=2)
@@ -226,15 +246,15 @@ if __name__ == "__main__":
         "password": password
     }
 
-    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze_poland4", geom_column="geometry")
-    tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
+    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze_poland5", geom_column="geometry")
+    # tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
 
-    for z, x, y, tile_bytes in tiles:
-        folder = f"tiles12/{z}/{x}"
-        os.makedirs(folder, exist_ok=True)
-        filename = f"{folder}/{y}.pbf"
-        with open(filename, "wb") as f:
-            f.write(tile_bytes)
-        print(f"Kafel zapisany: {filename}")
+    # for z, x, y, tile_bytes in tiles:
+    #     folder = f"tiles/{z}/{x}"
+    #     os.makedirs(folder, exist_ok=True)
+    #     filename = f"{folder}/{y}.pbf"
+    #     with open(filename, "wb") as f:
+    #         f.write(tile_bytes)
+    #     print(f"Kafel zapisany: {filename}")
     
-    generator.save_stats("tiles12/stats.json")
+    generator.save_stats("tiles/stats.json")

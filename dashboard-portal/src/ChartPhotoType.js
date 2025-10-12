@@ -1,11 +1,26 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useState, useEffect } from 'react';
-import './ChartPhotoType.css';
+import './Chart.css';
+import { colorPalette, rgba } from './theme/colors';
+import { tooltipStyle } from './theme/tooltip';
 
-const COLORS= {
-  "Analogowe": '#A16928',
-  "Cyfrowe": '#23687B'
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const group = payload[0].payload.name;
+    return (
+      <div style={tooltipStyle}>
+        <strong>{group}</strong>: {payload[0].value}<br />
+      </div>
+    );
+  }
+  return null;
+};
+
+const COLORS = {
+  "Analogowe": rgba(colorPalette[1]),
+  "Cyfrowe": rgba(colorPalette[8])
 };
 
 function groupPhotoType(features, stats) {
@@ -48,25 +63,32 @@ export function ChartPhotoType ( { features, stats }) {
     }, [features, stats]);
 
     return (
-        <div className="chart-phototype-container">
-            <h4>Zdjęcia według źródła</h4>
-            <ResponsiveContainer padding="0" width="100%" height="80%">
-                <PieChart>
-                <Pie
-                    data={data}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                >
-                    {data.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#ccc'} />
-                    ))}
-                </Pie>
-                <Tooltip />
-                <Legend layout="vertical" align="left" verticalAlign="middle" iconSize={12}/>
-                </PieChart>
-            </ResponsiveContainer>
+        <div className="chart-container">
+            <div className="chart-header">
+                <h3>Zdjęcia według źródła</h3>
+            </div>
+            <div className="chart-content">
+                <ResponsiveContainer padding="10" width="100%" height="100%">
+                    <PieChart>
+                    <Pie
+                        data={data}
+                        dataKey="value"
+                        nameKey="name"
+                        startAngle={180}
+                        endAngle={0}
+                        cx="50%"
+                        cy="70%"
+                        outerRadius={80}
+                        innerRadius={50}
+                    >
+                        {data.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#ccc'} />
+                        ))}
+                    </Pie>
+                    <Tooltip content={CustomTooltip}/>
+                    <Legend layout="horizontal" align="middle" verticalAlign="bottom" iconSize={12} />
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 }

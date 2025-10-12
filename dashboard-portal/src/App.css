@@ -16,7 +16,7 @@ html, body, #root {
 .App {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* zamiast height */
+  height: 100vh;
 }
 
 .map-wrapper {
@@ -38,11 +38,17 @@ html, body, #root {
 .App-header {
   background-color: #ffffff;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   font-size: 14px;
   color: rgb(0, 0, 0);
+  padding: 0 10px;
+  box-shadow: 0 0 8px 0 rgba(47, 49, 77, 0.08), 0 0 8px 0 rgba(84, 84, 84, 0.08);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1.5px solid rgba(228, 228, 228, 0.7);
+  outline: 1.5px solid rgba(180, 200, 255, 0.12);
 }
 
 .App-link {
@@ -66,7 +72,6 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  background-color: rgb(208, 208, 208);
   padding: 10px;
   min-height: 0;
   height: 100%;
@@ -93,4 +98,28 @@ html, body, #root {
   font-size: 14px;
   color: #333;
   font-style: italic;
+}
+
+
+.download-pdf-button {
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-family: "Chiron Sung HK", serif;
+  font-size: 15px;
+  margin: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.download-pdf-button:hover {
+  filter: brightness(0.9);
+}
+
+.download-pdf-button:active {
+  filter: brightness(0.8);
 }

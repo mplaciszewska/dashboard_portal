@@ -1,17 +1,32 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import './ChartColor.css';
+import './Chart.css';
 import { colorPalette, rgba } from './theme/colors';
+import { tooltipStyle } from './theme/tooltip';
+
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const group = payload[0].payload.name;
+    return (
+      <div style={tooltipStyle}>
+        <strong>{group}</strong>: {payload[0].value}<br />
+      </div>
+    );
+  }
+  return null;
+};
+
 
 const COLORS = [
+  rgba(colorPalette[8]),
   rgba(colorPalette[7]),
   rgba(colorPalette[6]),
   rgba(colorPalette[5]),
-  rgba(colorPalette[4]),
-  rgba(colorPalette[1]),
-  rgba(colorPalette[0]),
-  rgba(colorPalette[3]),
   rgba(colorPalette[2]),
+  rgba(colorPalette[1]),
+  rgba(colorPalette[4]),
+  rgba(colorPalette[3]),
 ];
   
 function groupColors(features, stats) {
@@ -47,9 +62,12 @@ export function ChartColor({ features, stats }) {
     // if (data.length === 0) return <p style={{ padding: '1rem' }}>Brak danych do wyświetlenia.</p>;
 
   return (
-    <div className="chart-color-container">
-      <h4>Zdjęcia według koloru</h4>
-        <ResponsiveContainer padding="0" width="100%" height="80%">
+    <div className="chart-container">
+      <div className="chart-header">
+        <h3>Zdjęcia według koloru</h3>
+      </div>
+      <div className="chart-content">
+        <ResponsiveContainer padding="0" width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
@@ -63,10 +81,11 @@ export function ChartColor({ features, stats }) {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip content={CustomTooltip}/>
             <Legend layout="vertical" align="left" verticalAlign="middle" iconSize={12}/>
           </PieChart>
         </ResponsiveContainer>
+      </div>
     </div>
   );
 }

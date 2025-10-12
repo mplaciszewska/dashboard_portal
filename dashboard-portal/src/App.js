@@ -8,6 +8,8 @@ import { ChartYear } from './ChartYear';
 import { ChartResolution } from './ChartResolution';
 import { ChartColor } from './ChartColor';
 import { ChartPhotoType } from './ChartPhotoType';
+import { ChartVegetation} from './ChartVegetation';
+import { ChartNew } from './ChartNew';
 import { ReportNumberTable } from './ReportNumberTable';
 import { Ring } from 'ldrs/react';
 import TerytSelection from './TerytSelection';
@@ -15,7 +17,7 @@ import 'ldrs/react/Ring.css';
 import { useRegionGeometry } from './hooks/useRegionGeometry';
 import { handleDownloadPDF } from './hooks/useGenerateReportPdf';
 
-import { colorPalette, rgba } from "./theme/colors";
+import { colorPalette, colors } from "./theme/colors";
 
 export function generateYearGroups(minYear, maxYear) {
   const groupCount = colorPalette.length;
@@ -49,7 +51,7 @@ function App() {
   };
 
   useEffect(() => {
-    fetch('http://localhost:8000/tiling/tiles12/stats.json')
+    fetch('http://localhost:8000/tiling/tiles/stats.json')
       .then(res => res.json())
       .then(data => {
         setStats(data);
@@ -94,13 +96,16 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <div>
-          
-        </div>
-        <h1>Dashboard Portal</h1>
-        <button onClick={() => handleDownloadPDF(filteredFeatures, polygonArea, regionGeometry)}>Pobierz raport PDF</button>
+        <h1>Dashboard Portal <span style={{ fontWeight: 'normal', fontSize: '18px' }}> -  Analiza zdjęć lotniczych w PZGiK</span></h1>
+        <button 
+          className="download-pdf-button" 
+          style={{ backgroundColor: colors.secondaryOpaque }}
+          onClick={() => handleDownloadPDF(filteredFeatures, polygonArea, regionGeometry)}
+        >
+          Pobierz raport PDF
+        </button>
       </header>
-      <div className="main-content">
+      <div className="main-content" style={{ backgroundColor: colors.background }}>
         <div
           style={{
             display: 'flex',
@@ -189,7 +194,21 @@ function App() {
             >
               <div
                 style={{
-                  flex: 1,
+                  flex: 1.2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                  minWidth: 0,
+                }}
+              >
+                <ChartNew
+                  features={filteredFeatures} 
+                  stats={isTileMode ? stats : null}
+                />
+              </div>
+              <div
+                style={{
+                  flex: 0.8,
                   display: 'flex',
                   flexDirection: 'column',
                   minHeight: 0,
@@ -197,20 +216,6 @@ function App() {
                 }}
               >
                 <ChartColor 
-                  features={filteredFeatures} 
-                  stats={isTileMode ? stats : null}
-                />
-              </div>
-              <div
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  minHeight: 0,
-                  minWidth: 0,
-                }}
-              >
-                <ChartPhotoType 
                   features={filteredFeatures}
                   stats={isTileMode ? stats : null}
                   />
@@ -248,17 +253,42 @@ function App() {
             minHeight: 0,
           }}
         >
-          <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+          <div style={{ flex: 1.2, minHeight: 0, minWidth: 0 }}>
             <ChartYear 
             features={filteredFeatures}
             stats={isTileMode ? stats : null}
             />
           </div>
-          <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
-            <ReportNumberTable 
-            features={filteredFeatures}
-            stats={isTileMode ? stats : null}
-            />
+          <div style={{ 
+            flex: 1.8, 
+            minHeight: 0, 
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '10px'
+          }}>
+            <div style={{ flex: 1.1, minHeight: 0, minWidth: 0 }}>
+              <ChartVegetation
+                features={filteredFeatures}
+                stats={isTileMode ? stats : null}
+              />
+            </div>
+            <div style={{ flex: 0.9, minHeight: 0, minWidth: 0 }}>
+              <ChartPhotoType
+                features={filteredFeatures}
+                stats={isTileMode ? stats : null}
+              />
+            </div>
+            <div style={{ 
+              width: '340px',
+              minHeight: 0,
+              flexShrink: 0
+            }}>
+              <ReportNumberTable 
+              features={filteredFeatures}
+              stats={isTileMode ? stats : null}
+              />
+            </div>
           </div>
         </div>
       </div>

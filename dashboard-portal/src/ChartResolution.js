@@ -1,6 +1,30 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer} from 'recharts';
+import './Chart.css';
 import './ChartResolution.css';
+import { tooltipStyle } from './theme/tooltip';
+import { colorPalette, rgba } from './theme/colors';
+
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const group = payload[0].payload.name;
+    let displayGroup = group;
+    if (payload[0].payload && payload[0].payload.name) {
+      if (group && String(group).length > 3) {
+        displayGroup = `1 : ${group} - `;
+      } else {
+        displayGroup = `${group} cm:`;
+      }
+    }
+    return (
+      <div style={tooltipStyle}>
+        <strong>{displayGroup}</strong> {payload[0].value}<br />
+      </div>
+    );
+  }
+  return null;
+};
 
 function calculateStats(data) {
   if (!data || data.length === 0) {
@@ -24,11 +48,14 @@ function groupResolution(features, stats) {
     const binsCyfr = {};
 
     Object.entries(stats.photo_type).forEach(([photo_type, value]) => {
-      const targetBin = photo_type.includes('analog') ? binsAnalog : binsCyfr;
+      const isAnalog = photo_type.includes('analog');
+      const targetBin = isAnalog ? binsAnalog : binsCyfr;
 
       Object.entries(value.resolution || {}).forEach(([res, count]) => {
-        // konwersja resolution do liczby jeśli możliwe
-        const numeric = isNaN(res) ? res : Number(res);
+        let numeric = isNaN(res) ? res : Number(res);
+        if (!isAnalog && !isNaN(numeric)) {
+          numeric = Math.round(numeric * 100);
+        }
         targetBin[numeric] = (targetBin[numeric] || 0) + count;
       });
     });
@@ -103,10 +130,12 @@ export function ChartResolution({ features, stats, isTileMode }) {
   const analogStats = calculateStats(analogData);
 
   return (
-    <div className="chart-resolution-container">
-      <h4>Zdjęcia według charakterystyki przestrzennej</h4>
-
-      <div className="chart-resolution-grid">
+    <div className="chart-container">
+      <div className="chart-header">
+        <h3>Zdjęcia według charakterystyki przestrzennej</h3>
+      </div>
+      <div className="chart-content">
+        <div className="chart-resolution-grid">
         {/* --- CYFROWE --- */}
         <div className="chart-box">
           {cyfrData.length === 0 ? (
@@ -127,8 +156,8 @@ export function ChartResolution({ features, stats, isTileMode }) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" height={35} fontSize={13} />
                   <YAxis fontSize={13}/>
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#23687B" />
+                  <Tooltip content={CustomTooltip} />
+                  <Bar dataKey="count" fill={rgba(colorPalette[8])} radius={[2, 2, 0, 0]}/>
                 </BarChart>
               </ResponsiveContainer>
             </>
@@ -154,13 +183,14 @@ export function ChartResolution({ features, stats, isTileMode }) {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} fontSize={13}/>
               <YAxis fontSize={13}/>
-              <Tooltip />
-              <Bar dataKey="count" fill="#A16928" />
+              <Tooltip content={CustomTooltip} />
+              <Bar dataKey="count" fill={rgba(colorPalette[1])} radius={[2, 2, 0, 0]}/>
             </BarChart>
           </ResponsiveContainer>
           </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

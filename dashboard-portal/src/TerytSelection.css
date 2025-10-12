@@ -3,11 +3,13 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: start;
+    margin-bottom: 8px;
 }
 
 .button-teryt {
     border: 1px solid #ddd;
     background-color: rgb(255, 255, 255);
+    margin-left: 1px;
     padding: 6px;
     border-radius: 4px;
     width: 30px;
@@ -27,15 +29,15 @@
 }
 
 .teryt-form {
-    padding: 15px;
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 4px;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 1.0);
+    border-radius: 8px;
     width: 120%;
     display: flex;
     flex-direction: column;
     gap: 10px;
     justify-content: center;
-    box-shadow: 0 0 0 1.1px rgba(0, 0, 0, .1);
+    box-shadow: 0 0 5px 1.1px rgba(55, 55, 55, 0.3);
 }
 
 .teryt-selection-labels {
@@ -66,6 +68,7 @@ select {
     background-color: white;
     font-size: 13px;
     color: #333;
+    
 }
 
 .buttons-control {

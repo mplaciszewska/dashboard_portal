@@ -1,6 +1,21 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Brush } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useState, useEffect } from 'react';
-import './ChartYear.css';
+import './Chart.css';
+import { tooltipStyle } from './theme/tooltip';
+import { colors } from './theme/colors';
+
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const group = payload[0].payload.name;
+    return (
+      <div style={tooltipStyle}>
+        <strong>{group}</strong>: {payload[0].value}<br />
+      </div>
+    );
+  }
+  return null;
+};
 
 function groupYears(features, stats) {
   const bins = {};
@@ -42,25 +57,28 @@ export function ChartYear({ features, stats }) {
   // if (data.length === 0) return <p style={{ padding: '1rem' }}>Brak danych do wyświetlenia.</p>;
 
   return (
-    <div className="year-chart-container">
-      <h4>Zdjęcia według roku wykonania</h4>
-      <ResponsiveContainer width="100%"  height="100%" >
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="name" 
-            interval="preserveStartEnd" 
-            angle={-45} 
-            textAnchor="end" 
-            height={60} 
-            fontSize={13}
-          />
-          <YAxis fontSize={13}/>
-          <Tooltip />
-          <Bar dataKey="count" fill="#79A7AC" />
-          {/* <Brush dataKey="name" height={30} stroke="#79A7AC" /> */}
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="chart-container">
+      <div className="chart-header">
+        <h3 style={{ marginBottom: '7px' }}>Zdjęcia według roku wykonania</h3>
+      </div>
+      <div className="chart-content">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 1 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="name" 
+              interval="preserveStartEnd" 
+              angle={-45} 
+              textAnchor="end" 
+              height={50} 
+              fontSize={13}
+            />
+            <YAxis fontSize={13}/>
+            <Tooltip content={CustomTooltip} />
+            <Bar dataKey="count" fill={colors.secondaryOpaque} radius={[2, 2, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

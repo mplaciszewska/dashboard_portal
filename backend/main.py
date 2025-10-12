@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .db import init_pool
-from .routers import photos, regions, report, tiles
+from .routers import photos, regions, report, tiles, database_info
 
 #uvicorn main:app --reload
 #uvicorn backend.main:app --reload
@@ -25,3 +25,4 @@ app.include_router(photos.router)
 app.include_router(regions.router)
 app.include_router(report.router)
 app.include_router(tiles.router)
+app.include_router(database_info.router)

@@ -1,0 +1,96 @@
+/* ===== SHARED CHART STYLES ===== */
+
+/* Base chart container - common styling for all charts */
+.chart-container {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(76, 76, 76, 0.35);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    margin: 0; 
+}
+
+.chart-table {
+    padding: 0.5rem;
+}
+
+/* Chart headers - consistent styling for all chart titles */
+.chart-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.chart-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.chart-header h5 {
+    margin: 0;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 0.8rem;
+}
+
+.chart-table-header {
+    padding: 0.5rem 0.5rem 0 0.5rem;
+}
+
+/* Chart content area - flexible container for chart elements */
+.chart-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Chart with overflow scrolling */
+.chart-container.scrollable {
+    overflow-y: auto;
+}
+
+/* Grid layouts for complex charts */
+.chart-grid {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 60%;
+}
+
+.chart-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 50%;
+}
+
+/* Stats display */
+.chart-stats {
+    font-size: 13px;
+    font-weight: 400;
+    color: #333;
+}
+
+/* Recharts legend customization */
+.recharts-legend-item { 
+    font-size: 14px; 
+}
+
+/* No data message */
+.no-data-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-size: 14px;
+    font-style: italic;
+}

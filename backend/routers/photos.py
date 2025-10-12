@@ -13,8 +13,8 @@ def get_zdjecia(skip: int = 0, limit: int = 500_000):
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia
-            FROM zdjecia_lotnicze_poland4
+            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia, dt_pzgik, data_nalotu
+            FROM zdjecia_lotnicze_poland5
             ORDER BY id
             OFFSET %s LIMIT %s
         """, (skip, limit))
@@ -31,6 +31,8 @@ def get_zdjecia(skip: int = 0, limit: int = 500_000):
             zrodlo_danych = row[5]
             url_do_pobrania = row[6] 
             numer_zgloszenia = row[7]
+            dt_pzgik = row[8]
+            data_nalotu = row[9]
             feature = Feature(
                 geometry=json.loads(geometry),
                 properties=FeatureProperties(
@@ -40,7 +42,9 @@ def get_zdjecia(skip: int = 0, limit: int = 500_000):
                     charakterystyka_przestrzenna=charakterystyka_przestrzenna,
                     zrodlo_danych=zrodlo_danych,
                     url_do_pobrania=url_do_pobrania,
-                    numer_zgloszenia=numer_zgloszenia
+                    numer_zgloszenia=numer_zgloszenia,
+                    dt_pzgik=dt_pzgik,
+                    data_nalotu=data_nalotu
                 )
             )
             result.append(feature)
@@ -69,8 +73,8 @@ async def filter_zdjecia(data: PolygonModel):
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia
-            FROM zdjecia_lotnicze_poland4
+            SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia, dt_pzgik, data_nalotu
+            FROM zdjecia_lotnicze_poland5
             WHERE ST_Intersects(geometry, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326))
             ORDER BY id
             OFFSET %s LIMIT %s
@@ -87,6 +91,8 @@ async def filter_zdjecia(data: PolygonModel):
             zrodlo_danych = row[5]
             url_do_pobrania = row[6] 
             numer_zgloszenia = row[7] 
+            dt_pzgik = row[8]
+            data_nalotu = row[9]
             feature = Feature(
                 geometry=json.loads(geometry),
                 properties=FeatureProperties(
@@ -96,7 +102,9 @@ async def filter_zdjecia(data: PolygonModel):
                     charakterystyka_przestrzenna=charakterystyka_przestrzenna,
                     zrodlo_danych=zrodlo_danych,
                     url_do_pobrania=url_do_pobrania,
-                    numer_zgloszenia=numer_zgloszenia
+                    numer_zgloszenia=numer_zgloszenia,
+                    dt_pzgik=dt_pzgik,
+                    data_nalotu=data_nalotu
                 )
             )
             result.append(feature)
