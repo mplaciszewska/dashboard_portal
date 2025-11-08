@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export const useRegionGeometry = (level, jptKod, nazwa) => {
+export const useRegionGeometry = (level, jptKod, nazwa, area) => {
   const [geometry, setGeometry] = useState(null);
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export const useRegionGeometry = (level, jptKod, nazwa) => {
       .catch(() => setGeometry(null));
 
     return () => controller.abort();
-  }, [level, jptKod, nazwa]);
+  }, [level, jptKod, nazwa, area]);
 
   return geometry;
 };
