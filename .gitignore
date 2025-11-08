@@ -32,3 +32,6 @@ POSTGRES.py
 **/POSTGRES.py
 *.sqlite3
 *.db
+
+# tiles
+tiles/
