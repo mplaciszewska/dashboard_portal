@@ -1,4 +1,3 @@
-
 from .fetch.fetch_data_from_wfs import WFSFetcher
 from .process.transform import deduplicate_gdf, to_wgs84, hash_attributes_vectorized
 from .save.save_to_postgres import PostgresSaver
@@ -8,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 from .models import PolandBbox2180
-from POSTGRES import dbname, user, password, host, port
+from ..POSTGRES import dbname, user, password, host, port, photo_table, metadata_table
 
 
 def fetch_bbox_parallel(fetcher, layer, bbox):
@@ -24,7 +23,6 @@ def fetch_bbox_parallel(fetcher, layer, bbox):
 
 wfs_url = "https://mapy.geoportal.gov.pl/wss/service/PZGIK/ZDJ/WFS/Skorowidze_Srodki_Rzutow_Zdjec"
 db_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
-table_name = "zdjecia_lotnicze"
 
 bbox_generator = PolandBbox2180()
 bboxes = bbox_generator.generate_bboxes()
@@ -34,7 +32,7 @@ saver = PostgresSaver(db_url)
 with saver.engine.begin() as conn:
 
     conn.execute(text(f"""
-        CREATE TABLE if not exists {table_name} (
+        CREATE TABLE if not exists {photo_table} (
             id BIGINT PRIMARY KEY,
             gml_id TEXT,
             numer_szeregu TEXT,
@@ -60,11 +58,11 @@ with saver.engine.begin() as conn:
                 SELECT 1
                 FROM pg_constraint pc
                 JOIN pg_class pt ON pc.conrelid = pt.oid
-                WHERE pt.relname = '{table_name}' 
-                AND pc.conname = '{table_name}_uid_unique'
+                WHERE pt.relname = '{photo_table}' 
+                AND pc.conname = '{photo_table}_uid_unique'
                 AND pc.contype = 'u'
             ) THEN
-                ALTER TABLE {table_name} ADD CONSTRAINT {table_name}_uid_unique UNIQUE(uid);
+                ALTER TABLE {photo_table} ADD CONSTRAINT {photo_table}_uid_unique UNIQUE(uid);
             END IF;
         END$$;
     """))
@@ -75,9 +73,9 @@ with saver.engine.begin() as conn:
             IF NOT EXISTS (
                 SELECT 1
                 FROM pg_indexes
-                WHERE tablename = '{table_name}' AND indexname = '{table_name}_uid_idx'
+                WHERE tablename = '{photo_table}' AND indexname = '{photo_table}_uid_idx'
             ) THEN
-                CREATE INDEX {table_name}_uid_idx ON {table_name} (uid);
+                CREATE INDEX {photo_table}_uid_idx ON {photo_table} (uid);
             END IF;
         END$$;
     """))
@@ -88,9 +86,9 @@ with saver.engine.begin() as conn:
             IF NOT EXISTS (
                 SELECT 1
                 FROM pg_indexes
-                WHERE tablename = '{table_name}' AND indexname = '{table_name}_geometry_idx'
+                WHERE tablename = '{photo_table}' AND indexname = '{photo_table}_geometry_idx'
             ) THEN
-                CREATE INDEX {table_name}_geometry_idx ON {table_name} USING GIST (geometry);
+                CREATE INDEX {photo_table}_geometry_idx ON {photo_table} USING GIST (geometry);
             END IF;
         END$$;
     """))
@@ -101,9 +99,9 @@ with saver.engine.begin() as conn:
             IF NOT EXISTS (
                 SELECT 1
                 FROM pg_indexes
-                WHERE tablename = '{table_name}' AND indexname = '{table_name}_rok_wykonania_idx'
+                WHERE tablename = '{photo_table}' AND indexname = '{photo_table}_rok_wykonania_idx'
             ) THEN
-                CREATE INDEX {table_name}_rok_wykonania_idx ON {table_name} (rok_wykonania);
+                CREATE INDEX {photo_table}_rok_wykonania_idx ON {photo_table} (rok_wykonania);
             END IF;
         END$$;
     """))
@@ -114,9 +112,9 @@ with saver.engine.begin() as conn:
             IF NOT EXISTS (
                 SELECT 1
                 FROM pg_indexes
-                WHERE tablename = '{table_name}' AND indexname = '{table_name}_charakterystyka_idx'
+                WHERE tablename = '{photo_table}' AND indexname = '{photo_table}_charakterystyka_idx'
             ) THEN
-                CREATE INDEX {table_name}_charakterystyka_idx ON {table_name} (charakterystyka_przestrzenna);
+                CREATE INDEX {photo_table}_charakterystyka_idx ON {photo_table} (charakterystyka_przestrzenna);
             END IF;
         END$$;
     """))
@@ -127,9 +125,9 @@ with saver.engine.begin() as conn:
             IF NOT EXISTS (
                 SELECT 1
                 FROM pg_indexes
-                WHERE tablename = '{table_name}' AND indexname = '{table_name}_kolor_idx'
+                WHERE tablename = '{photo_table}' AND indexname = '{photo_table}_kolor_idx'
             ) THEN
-                CREATE INDEX {table_name}_kolor_idx ON {table_name} (kolor);
+                CREATE INDEX {photo_table}_kolor_idx ON {photo_table} (kolor);
             END IF;
         END$$;
     """))
@@ -140,9 +138,9 @@ with saver.engine.begin() as conn:
             IF NOT EXISTS (
                 SELECT 1
                 FROM pg_indexes
-                WHERE tablename = '{table_name}' AND indexname = '{table_name}_zrodlo_danych_idx'
+                WHERE tablename = '{photo_table}' AND indexname = '{photo_table}_zrodlo_danych_idx'
             ) THEN
-                CREATE INDEX {table_name}_zrodlo_danych_idx ON {table_name} (zrodlo_danych);
+                CREATE INDEX {photo_table}_zrodlo_danych_idx ON {photo_table} (zrodlo_danych);
             END IF;
         END$$;
     """))
@@ -196,10 +194,10 @@ for i, layer in enumerate(layers):
             for i in range(0, len(full_gdf), chunk_size):
                 chunk = full_gdf.iloc[i:i+chunk_size]
                 print(f"Processing chunk {i//chunk_size + 1}/{(len(full_gdf)-1)//chunk_size + 1}")
-                inserted = saver.append_unique_chunk_sql(chunk, table_name=table_name)
+                inserted = saver.append_unique_chunk_sql(chunk, photo_table=photo_table)
                 new_records_count += inserted
         else:
-            new_records_count = saver.append_unique_chunk_sql(full_gdf, table_name=table_name)
+            new_records_count = saver.append_unique_chunk_sql(full_gdf, photo_table=photo_table)
 
         
         elapsed = time.time() - start_time
@@ -208,8 +206,8 @@ for i, layer in enumerate(layers):
         print(f"No data found for layer {layer}")
 
 saver.update_metadata_table(
-    table_name=table_name,
+    photo_table=photo_table,
     new_count=new_records_count,
-    metadata_table="metadane"
+    metadata_table=metadata_table
 )
 

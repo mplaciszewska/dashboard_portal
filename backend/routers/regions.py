@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query
 import json
 
 from ..models import Region, RegionProperties
-from ..db import get_connection, release_connection
+from ..db import get_connection, release_connection, DatabaseTables
 
 
 router = APIRouter()
@@ -13,8 +13,8 @@ def get_wojewodztwa():
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM wojewodztwa ORDER BY "JPT_NAZWA_"
+        cur.execute(f"""
+            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM {DatabaseTables.woj_table} ORDER BY "JPT_NAZWA_"
         """)
         wojewodztwa = [{"id": row[0], "name": row[1], "area": row[2]} for row in cur.fetchall()]
         return JSONResponse(content=wojewodztwa)
@@ -27,8 +27,8 @@ def get_powiaty(woj_id: str):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM powiaty
+        cur.execute(f"""
+            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM {DatabaseTables.pow_table}
             WHERE woj_kod = %s ORDER BY "JPT_NAZWA_"
         """, (woj_id,))
         powiaty = [{"id": row[0], "name": row[1], "area": row[2]} for row in cur.fetchall()]
@@ -43,8 +43,8 @@ def get_gminy(powiat_id: str):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM gminy 
+        cur.execute(f"""
+            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM {DatabaseTables.gmi_table}
             WHERE pow_kod = %s ORDER BY "JPT_NAZWA_"
         """, (powiat_id,))
         gminy = [{"id": row[0], "name": row[1], "area": row[2]} for row in cur.fetchall()]
@@ -57,7 +57,7 @@ def get_gminy(powiat_id: str):
 @router.get("/api/region")
 def get_region(level: str = Query(..., regex="^(woj|pow|gmi)$"),
                jpt_kod: str = Query(...)):
-    table = {"woj": "wojewodztwa", "pow": "powiaty", "gmi": "gminy"}[level]
+    table = {"woj": DatabaseTables.woj_table, "pow": DatabaseTables.pow_table, "gmi": DatabaseTables.gmi_table}[level]
     conn = get_connection()
     try:
         cur = conn.cursor()

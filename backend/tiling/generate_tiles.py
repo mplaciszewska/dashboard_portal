@@ -1,13 +1,13 @@
 import psycopg2
 import mercantile
-from POSTGRES import dbname, user, password, host, port
+from ..POSTGRES import dbname, user, password, host, port, photo_table
 import os
 import json
 
-# python generate_tiles.py
+# python -m backend.tiling.generate_tiles
 
 class MVTGenerator:
-    def __init__(self, db_config, table_name="zdjecia_lotnicze", geom_column="geometry"):
+    def __init__(self, db_config, table_name=photo_table, geom_column="geometry"):
         self.conn = psycopg2.connect(**db_config)
         self.table_name = table_name
         self.geom_column = geom_column
@@ -245,15 +245,15 @@ if __name__ == "__main__":
         "password": password
     }
 
-    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze", geom_column="geometry")
+    generator = MVTGenerator(db_config, table_name=photo_table, geom_column="geometry")
     tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
 
     for z, x, y, tile_bytes in tiles:
-        folder = f"tiles/{z}/{x}"
+        folder = f"tiles2/{z}/{x}"
         os.makedirs(folder, exist_ok=True)
         filename = f"{folder}/{y}.pbf"
         with open(filename, "wb") as f:
             f.write(tile_bytes)
         print(f"Kafel zapisany: {filename}")
     
-    generator.save_stats("tiles/stats.json")
+    generator.save_stats("tiles2/stats.json")

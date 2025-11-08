@@ -1,5 +1,13 @@
 from psycopg2.pool import SimpleConnectionPool
-from .POSTGRES import dbname, user, password, host, port
+from .POSTGRES import dbname, user, password, host, port, photo_table, metadata_table, woj_table, pow_table, gmi_table
+
+
+class DatabaseTables:
+    photo_table = photo_table
+    metadata_table = metadata_table
+    woj_table = woj_table
+    pow_table = pow_table
+    gmi_table = gmi_table
 
 pool = None
 

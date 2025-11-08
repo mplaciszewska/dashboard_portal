@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from ..models import Metadata
-from ..db import get_connection, release_connection
+from ..db import get_connection, release_connection, DatabaseTables
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ def get_metadata() -> Metadata:
         
         cur.execute(f"""
             SELECT records_count, to_char(last_update, 'YYYY-MM-DD HH24:MI:SS') AS last_update, convex_hull_area 
-            FROM metadane
+            FROM {DatabaseTables.metadata_table}
             ORDER BY last_update DESC
             LIMIT 1
         """)

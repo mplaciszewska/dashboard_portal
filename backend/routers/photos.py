@@ -3,7 +3,7 @@ from fastapi import APIRouter
 import json
 
 from ..models import Feature, FeatureProperties, PolygonModel
-from ..db import get_connection, release_connection
+from ..db import get_connection, release_connection, DatabaseTables
 
 router = APIRouter()
 
@@ -12,9 +12,9 @@ def get_zdjecia(skip: int = 0, limit: int = 500_000):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(f"""
             SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia, dt_pzgik, data_nalotu
-            FROM zdjecia_lotnicze
+            FROM {DatabaseTables.photo_table}
             ORDER BY id
             OFFSET %s LIMIT %s
         """, (skip, limit))
@@ -74,9 +74,9 @@ async def filter_zdjecia(data: PolygonModel):
 
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(f"""
             SELECT id, ST_AsGeoJSON(geometry) AS geometry_json, rok_wykonania, kolor, charakterystyka_przestrzenna, zrodlo_danych, url_do_pobrania, numer_zgloszenia, dt_pzgik, data_nalotu
-            FROM zdjecia_lotnicze
+            FROM {DatabaseTables.photo_table}
             WHERE ST_Intersects(geometry, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326))
             ORDER BY id
             OFFSET %s LIMIT %s
