@@ -1,6 +1,6 @@
 import area from '@turf/area';
 import maplibregl from 'maplibre-gl';
-import { DEFAULT_POLYGON_AREA_KM2, FIT_BOUNDS_OPTIONS } from './constants';
+import { FIT_BOUNDS_OPTIONS } from './constants';
 
 
 export function calculatePolygonArea(polygon) {

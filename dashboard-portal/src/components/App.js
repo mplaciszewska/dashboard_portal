@@ -143,26 +143,22 @@ function App() {
   const regionGeometry = useRegionGeometry(region.level, region.kod, region.nazwa, region.area);
 
   const polygonArea = useMemo(() => {
-    if (polygon && !regionGeometry) {
-      const area = calculatePolygonArea(polygon);
-      return area;
+    if (region?.level && region?.kod && region?.area) {
+      return region.area;
     }
     if (polygon && regionGeometry) {
       const regionPoly = extractGeometryFromRegion(regionGeometry);
       if (polygon !== regionPoly && JSON.stringify(polygon) !== JSON.stringify(regionPoly)) {
-        const area = calculatePolygonArea(polygon);
-        return area;
+        return calculatePolygonArea(polygon);
       }
     }
-    if (region.level && region.kod && region.area) {
-      return region.area;
+    
+    if (polygon) {
+      return calculatePolygonArea(polygon);
     }
-    if(!polygon && !regionGeometry){
-      return metadata.convex_hull_area_km2;
-    }
-    const area = calculatePolygonArea(polygon);
-    return area;
-  }, [polygon, region.level, region.kod, region.area, regionGeometry, metadata]);
+    
+    return metadata?.convex_hull_area_km2 || 0;
+  }, [polygon, region, regionGeometry, metadata]);
 
 
   const featuresPerKm2 = useMemo(() => {

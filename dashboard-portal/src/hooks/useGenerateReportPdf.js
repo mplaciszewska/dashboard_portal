@@ -2,28 +2,6 @@ export const handleDownloadPDF = async (filteredFeatures, polygonArea, regionGeo
   const areaName = regionGeometry?.features?.[0]?.properties?.nazwa || "Narysowana figura";
 
   console.log("Generowanie raportu PDF dla obszaru:", areaName);
-  console.log("Metadata:", metadata);
-  
-  // Format last_update for display
-  let lastUpdate = "Brak danych";
-  if (metadata?.last_update) {
-    try {
-      const date = new Date(metadata.last_update);
-      // Format: DD.MM.YYYY HH:MM:SS
-      lastUpdate = date.toLocaleString('pl-PL', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      console.log("Formatted last_update:", lastUpdate);
-    } catch (e) {
-      console.error("Error formatting last_update:", e);
-      lastUpdate = "Brak danych";
-    }
-  }
 
   const featuresPayload = filteredFeatures.map(f => ({
     type: "Feature",
@@ -48,7 +26,7 @@ export const handleDownloadPDF = async (filteredFeatures, polygonArea, regionGeo
       count: filteredFeatures.length,
       area: polygonArea,
       area_name: areaName,
-      last_update: lastUpdate,
+      last_update: metadata?.last_update,
       features: featuresPayload
     }),
   });
