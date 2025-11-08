@@ -7,7 +7,7 @@ import json
 # python generate_tiles.py
 
 class MVTGenerator:
-    def __init__(self, db_config, table_name="zdjecia_lotnicze_poland5", geom_column="geometry"):
+    def __init__(self, db_config, table_name="zdjecia_lotnicze", geom_column="geometry"):
         self.conn = psycopg2.connect(**db_config)
         self.table_name = table_name
         self.geom_column = geom_column
@@ -89,7 +89,6 @@ class MVTGenerator:
                 stats["flight_dates"][data_nalotu] = stats["flight_dates"].get(data_nalotu, 0) + 1
 
 
-            # Add correlation between dt_pzgik and rok_wykonania
             if dt_pzgik and rok:
                 if dt_pzgik not in stats["dt_pzgik_rok_correlation"]:
                     stats["dt_pzgik_rok_correlation"][dt_pzgik] = {}
@@ -246,15 +245,15 @@ if __name__ == "__main__":
         "password": password
     }
 
-    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze_poland5", geom_column="geometry")
-    # tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
+    generator = MVTGenerator(db_config, table_name="zdjecia_lotnicze", geom_column="geometry")
+    tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
 
-    # for z, x, y, tile_bytes in tiles:
-    #     folder = f"tiles/{z}/{x}"
-    #     os.makedirs(folder, exist_ok=True)
-    #     filename = f"{folder}/{y}.pbf"
-    #     with open(filename, "wb") as f:
-    #         f.write(tile_bytes)
-    #     print(f"Kafel zapisany: {filename}")
+    for z, x, y, tile_bytes in tiles:
+        folder = f"tiles/{z}/{x}"
+        os.makedirs(folder, exist_ok=True)
+        filename = f"{folder}/{y}.pbf"
+        with open(filename, "wb") as f:
+            f.write(tile_bytes)
+        print(f"Kafel zapisany: {filename}")
     
     generator.save_stats("tiles/stats.json")

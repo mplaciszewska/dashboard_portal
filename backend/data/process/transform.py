@@ -2,11 +2,6 @@
 import geopandas as gpd
 import pandas as pd
 import hashlib
-
-
-import geopandas as gpd
-import pandas as pd
-import hashlib
 import numpy as np
 
 def to_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -52,8 +47,9 @@ def deduplicate_gdf(gdf, hash_column='uid'):
     gdf = gdf.drop_duplicates(subset=hash_column)
     return gdf
 
+
 def hash_attributes_vectorized(gdf, exclude_columns=None):
-    """Vectorized version of hash computation for better performance"""
+    """Vectorized version of hash computation using WKB for geometry"""
     if exclude_columns is None:
         exclude_columns = ['uid', 'id']
     exclude_columns = set(exclude_columns)
@@ -68,17 +64,18 @@ def hash_attributes_vectorized(gdf, exclude_columns=None):
     hash_data = []
     for col in columns:
         if col == 'geometry':
-            if len(df) > 0 and hasattr(df[col].iloc[0], 'wkt'):
-                hash_data.append(df[col].apply(lambda x: x.wkt if hasattr(x, 'wkt') else str(x)))
-            else:
-                hash_data.append(df[col].astype(str))
+            # WKB geometry
+            hash_data.append(df[col].apply(
+                lambda x: x.wkb if hasattr(x, 'wkb') else str(x).encode("utf-8")
+            ))
         elif df[col].dtype in ['float64', 'float32']:
             hash_data.append(df[col].fillna('NULL').apply(lambda x: f"{x:.10f}" if x != 'NULL' else 'NULL'))
         else:
             hash_data.append(df[col].fillna('NULL').astype(str).str.strip())
     
     combined = pd.DataFrame(hash_data).T
-    hash_strings = combined.apply(lambda row: "|".join(row), axis=1)
+    hash_strings = combined.apply(lambda row: b"|".join(
+        r if isinstance(r, bytes) else str(r).encode("utf-8") for r in row
+    ), axis=1)
     
-    return hash_strings.apply(lambda x: hashlib.sha256(x.encode("utf-8")).hexdigest())
-
+    return hash_strings.apply(lambda x: hashlib.sha256(x).hexdigest())

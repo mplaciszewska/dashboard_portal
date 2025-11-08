@@ -3,6 +3,7 @@ from fastapi.responses import Response
 
 from ..models import Feature, FeatureProperties
 from ..report.generate_report import generate_report_pdf
+from ..report.export_csv import export_features_csv
 
 
 router = APIRouter()
@@ -21,11 +22,12 @@ async def generate_report(data: dict):
                 id=properties.get("id"),
                 rok_wykonania=properties.get("rok_wykonania"),
                 kolor=properties.get("kolor"),
-                charakterystyka_przestrzenna=str(properties.get("charakterystyka_przestrzenna")) if properties.get("charakterystyka_przestrzenna") is not None else None,
+                charakterystyka_przestrzenna=properties.get("charakterystyka_przestrzenna") if properties.get("charakterystyka_przestrzenna") is not None else None,
                 zrodlo_danych=properties.get("zrodlo_danych"),
                 url_do_pobrania=properties.get("url_do_pobrania"),
                 numer_zgloszenia=properties.get("numer_zgloszenia"),
-                dt_pzgik=properties.get("dt_pzgik")
+                dt_pzgik=properties.get("dt_pzgik"),
+                data_nalotu=properties.get("data_nalotu")
             )
         )
         features.append(feature)
@@ -33,3 +35,31 @@ async def generate_report(data: dict):
     data["features"] = features
     pdf_bytes = generate_report_pdf(data)
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+@router.post("/api/report/csv")
+async def generate_report_csv(data: dict):
+    features_data = data.get("features", [])
+    features = []
+    
+    for f in features_data:
+        properties = f.get("properties", {})
+        feature = Feature(
+            geometry=f.get("geometry"),
+            properties=FeatureProperties(
+                id=properties.get("id"),
+                rok_wykonania=properties.get("rok_wykonania"),
+                kolor=properties.get("kolor"),
+                charakterystyka_przestrzenna=properties.get("charakterystyka_przestrzenna") if properties.get("charakterystyka_przestrzenna") is not None else None,
+                zrodlo_danych=properties.get("zrodlo_danych"),
+                url_do_pobrania=properties.get("url_do_pobrania"),
+                numer_zgloszenia=properties.get("numer_zgloszenia"),
+                dt_pzgik=properties.get("dt_pzgik"),
+                data_nalotu=properties.get("data_nalotu")
+            )
+        )
+        features.append(feature)
+    
+    data["features"] = features
+    csv_bytes = export_features_csv(data)
+    return Response(content=csv_bytes, media_type="text/csv")

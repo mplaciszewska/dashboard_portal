@@ -1,11 +1,8 @@
 import requests
 import geopandas as gpd
-from io import BytesIO
 import time
 import xml.etree.ElementTree as ET
 import tempfile
-import pandas as pd
-from pyproj import Transformer
 import os
 import tempfile
 import requests
@@ -35,10 +32,6 @@ class WFSFetcher:
         return layers
 
     def fetch_layer_by_bbox(self, layer, bbox=None):
-        """
-        Pobiera dane z WFS dla podanej warstwy i opcjonalnego BBOX.
-        bbox wprowadzany jest w EPSG:4326 (stopnie), a funkcja konwertuje go do EPSG:2180.
-        """
         params = {
             "service": "WFS",
             "version": "2.0.0",

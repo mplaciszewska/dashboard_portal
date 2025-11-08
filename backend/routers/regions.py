@@ -14,9 +14,9 @@ def get_wojewodztwa():
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT "JPT_KOD_JE", "JPT_NAZWA_" FROM wojewodztwa ORDER BY "JPT_NAZWA_"
+            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM wojewodztwa ORDER BY "JPT_NAZWA_"
         """)
-        wojewodztwa = [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
+        wojewodztwa = [{"id": row[0], "name": row[1], "area": row[2]} for row in cur.fetchall()]
         return JSONResponse(content=wojewodztwa)
     finally:
         cur.close()
@@ -28,10 +28,10 @@ def get_powiaty(woj_id: str):
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT "JPT_KOD_JE", "JPT_NAZWA_" FROM powiaty 
+            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM powiaty
             WHERE woj_kod = %s ORDER BY "JPT_NAZWA_"
         """, (woj_id,))
-        powiaty = [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
+        powiaty = [{"id": row[0], "name": row[1], "area": row[2]} for row in cur.fetchall()]
         return JSONResponse(content=powiaty)
     finally:
         cur.close()
@@ -44,10 +44,10 @@ def get_gminy(powiat_id: str):
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT "JPT_KOD_JE", "JPT_NAZWA_" FROM gminy 
+            SELECT "JPT_KOD_JE", "JPT_NAZWA_", "area_2180_km2" FROM gminy 
             WHERE pow_kod = %s ORDER BY "JPT_NAZWA_"
         """, (powiat_id,))
-        gminy = [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
+        gminy = [{"id": row[0], "name": row[1], "area": row[2]} for row in cur.fetchall()]
         return JSONResponse(content=gminy)
     finally:
         cur.close()
@@ -62,17 +62,17 @@ def get_region(level: str = Query(..., regex="^(woj|pow|gmi)$"),
     try:
         cur = conn.cursor()
         cur.execute(
-            f'SELECT "JPT_KOD_JE", ST_AsGeoJSON(geometry), "JPT_NAZWA_" '
+            f'SELECT "JPT_KOD_JE", ST_AsGeoJSON(geometry), "JPT_NAZWA_", "area_2180_km2" '
             f'FROM {table} WHERE "JPT_KOD_JE" = %s', (jpt_kod,)
         )
         row = cur.fetchone()
         if row is None:
             return JSONResponse(status_code=404, content={"error": "Geometria nie znaleziona"})
 
-        kod, geom_json, nazwa = row
+        kod, geom_json, nazwa, area = row
         region = Region(
             geometry=json.loads(geom_json),
-            properties=RegionProperties(level=level, kod=kod, nazwa=nazwa)
+            properties=RegionProperties(level=level, kod=kod, nazwa=nazwa, area=area)
         )
         return {"type": "FeatureCollection", "features": [region]}
     finally:

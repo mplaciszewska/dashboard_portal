@@ -1,5 +1,6 @@
 
 import geopandas as gpd
+from datetime import datetime
 from sqlalchemy import create_engine, text, MetaData, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.types import Text, Integer, DOUBLE_PRECISION, BIGINT
@@ -17,9 +18,8 @@ class PostgresSaver:
                 "options": "-c synchronous_commit=off"
             }
         )
-
-
-    def append_unique_chunk_sql(self, gdf_chunk: gpd.GeoDataFrame, table_name: str):
+    
+    def append_unique_chunk_sql(self, gdf_chunk: gpd.GeoDataFrame, table_name: str) -> int:
         with self.engine.connect() as conn:
             max_id = conn.execute(text(f"SELECT COALESCE(MAX(id),0) FROM {table_name}")).scalar()
         gdf_chunk = gdf_chunk.reset_index(drop=True)
@@ -66,3 +66,64 @@ class PostgresSaver:
                 print(f"Skipping {duplicate_records} duplicate records from chunk for layer '{table_name}' (inserted {inserted_records} new records)")
             
             conn.execute(text(f"DROP TABLE {temp_table}"))
+        return inserted_records
+            
+    def update_metadata_table(
+        self,
+        table_name: str,
+        new_count: int | None = None,
+        metadata_table: str = "db_metadane"
+    ):
+        """
+        Aktualizuje tabelę metadanych dla warstwy.
+
+        Args:
+            table_name: nazwa tabeli z danymi (np. 'zdjecia_lotnicze')
+            new_count: liczba nowych rekordów przy tej aktualizacji
+            metadata_table: nazwa tabeli z metadanymi (default 'metadata')
+        """
+        with self.engine.begin() as conn:
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS {metadata_table} (
+                    id SERIAL PRIMARY KEY,
+                    table_name TEXT NOT NULL,
+                    records_count BIGINT,
+                    last_update TIMESTAMP,
+                    new_count BIGINT,
+                    convex_hull_area DOUBLE PRECISION
+                );
+            """))
+
+            records_count = conn.execute(
+                text(f"SELECT COUNT(*) FROM {table_name}")
+            ).scalar()
+
+            convex_hull_area = conn.execute(text(f"""
+                WITH local_hulls AS (
+                    SELECT ST_ConvexHull(ST_Collect(geometry)) AS hull_geom
+                    FROM {table_name}
+                ),
+                final_hull AS (
+                    SELECT ST_ConvexHull(ST_Collect(hull_geom)) AS geom
+                    FROM local_hulls
+                )
+                SELECT ST_Area(ST_Transform(geom, 2180)) / 1e6 AS hull_km2
+                FROM final_hull;
+            """)).scalar()
+
+            conn.execute(text(f"""
+                INSERT INTO {metadata_table} (
+                    table_name, records_count, last_update, new_count, convex_hull_area
+                )
+                VALUES (
+                    :table_name, :records_count, :last_update, :new_count, :convex_hull_area
+                )
+            """), {
+                "table_name": table_name,
+                "records_count": records_count,
+                "last_update": datetime.now(),
+                "new_count": new_count,
+                "convex_hull_area": convex_hull_area
+            })
+
+            print(f"Metadata updated for '{table_name}': {records_count} records, convex hull area {convex_hull_area:.2f} km²")

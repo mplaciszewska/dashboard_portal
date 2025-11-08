@@ -7,24 +7,9 @@ from sqlalchemy import text
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
-from ..POSTGRES import dbname, user, password, host, port
+from .models import PolandBbox2180
+from POSTGRES import dbname, user, password, host, port
 
-def generate_poland_bboxes(minx=120_000, miny=100_000, maxx=820_000, maxy=900_000, step=100_000):
-    bboxes = []
-    x = minx
-    while x < maxx:
-        y = miny
-        while y < maxy:
-            bbox = (
-                x,
-                y,
-                min(x + step, maxx),
-                min(y + step, maxy)
-            )
-            bboxes.append(bbox)
-            y += step
-        x += step
-    return bboxes
 
 def fetch_bbox_parallel(fetcher, layer, bbox):
     """Helper function for parallel bbox fetching"""
@@ -37,17 +22,17 @@ def fetch_bbox_parallel(fetcher, layer, bbox):
         print(f"Error fetching bbox {bbox}: {e}")
     return None
 
-
-
 wfs_url = "https://mapy.geoportal.gov.pl/wss/service/PZGIK/ZDJ/WFS/Skorowidze_Srodki_Rzutow_Zdjec"
 db_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
-table_name = "zdjecia_lotnicze_poland5"
+table_name = "zdjecia_lotnicze"
 
+bbox_generator = PolandBbox2180()
+bboxes = bbox_generator.generate_bboxes()
 fetcher = WFSFetcher(wfs_url, request_delay=0.5, retry_delay=1, timeout=500)
 saver = PostgresSaver(db_url)
 
 with saver.engine.begin() as conn:
-    
+
     conn.execute(text(f"""
         CREATE TABLE if not exists {table_name} (
             id BIGINT PRIMARY KEY,
@@ -163,8 +148,7 @@ with saver.engine.begin() as conn:
     """))
     
 layers = fetcher.get_layers()
-bboxes = generate_poland_bboxes(step=50_000)
-
+new_records_count = 0
 for i, layer in enumerate(layers):
     print(f"Processing layer {i+1}/{len(layers)}: {layer}")
     start_time = time.time()
@@ -205,18 +189,27 @@ for i, layer in enumerate(layers):
         print(f"Saving {len(full_gdf)} records to database...")
         
         chunk_size = 10000
+
+
         if len(full_gdf) > chunk_size:
             print(f"Processing in chunks of {chunk_size} records...")
             for i in range(0, len(full_gdf), chunk_size):
                 chunk = full_gdf.iloc[i:i+chunk_size]
                 print(f"Processing chunk {i//chunk_size + 1}/{(len(full_gdf)-1)//chunk_size + 1}")
-                saver.append_unique_chunk_sql(chunk, table_name=table_name)
+                inserted = saver.append_unique_chunk_sql(chunk, table_name=table_name)
+                new_records_count += inserted
         else:
-            saver.append_unique_chunk_sql(full_gdf, table_name=table_name)
+            new_records_count = saver.append_unique_chunk_sql(full_gdf, table_name=table_name)
+
         
         elapsed = time.time() - start_time
         print(f"Layer {layer} completed in {elapsed:.2f} seconds")
     else:
         print(f"No data found for layer {layer}")
 
+saver.update_metadata_table(
+    table_name=table_name,
+    new_count=new_records_count,
+    metadata_table="metadane"
+)
 
