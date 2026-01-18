@@ -1,5 +1,6 @@
 # Python
 venv/
+venv_test/
 __pycache__/
 *.pyc
 
@@ -24,3 +25,14 @@ dashboard-portal/yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env
+
+
+# db
+POSTGRES.py
+**/POSTGRES.py
+*.sqlite3
+*.db
+
+# tiles
+tiles/

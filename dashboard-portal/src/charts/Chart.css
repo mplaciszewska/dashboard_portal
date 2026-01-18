@@ -1,0 +1,86 @@
+.chart-container {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(76, 76, 76, 0.35);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    margin: 0; 
+}
+
+.chart-table {
+    padding: 0.5rem;
+}
+
+.chart-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.chart-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.chart-header h5 {
+    margin: 0;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 0.8rem;
+}
+
+.chart-table-header {
+    padding: 0.5rem 0.5rem 0 0.5rem;
+}
+
+.chart-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chart-container.scrollable {
+    overflow-y: auto;
+}
+
+.chart-grid {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 60%;
+}
+
+.chart-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 50%;
+}
+
+.chart-stats {
+    font-size: 13px;
+    font-weight: 400;
+    color: #333;
+}
+
+.recharts-legend-item { 
+    font-size: 14px; 
+}
+
+.no-data-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-size: 14px;
+    font-style: italic;
+}

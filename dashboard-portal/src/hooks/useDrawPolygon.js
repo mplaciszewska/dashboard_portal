@@ -1,137 +1,90 @@
 import { useState, useEffect, useRef } from 'react';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import DrawRectangle from 'mapbox-gl-draw-rectangle-mode';
 
-export function useDrawPolygon(map, regionGeometry) {
+
+export function useDrawPolygon(map, regionGeometry, { onDrawingChange } = {}) {
   const [drawnPolygon, setDrawnPolygon] = useState(null);
   const drawRef = useRef(null);
-  const drawnPolygonIdRef = useRef(null); // Ref do zapamiętania aktualnego id poligonu
+  const drawnPolygonIdRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
 
     const draw = new MapboxDraw({
-      displayControlsDefault: true,
+      displayControlsDefault: false,
       clickBuffer: 0,
-      controls: {
-        polygon: true,
-        line_string: false,
-        point: false,
-        trash: true,
-        combine_features: false,
-        uncombine_features: false,
-      },
+      controls: {},
+      modes: Object.assign({
+        draw_polygon: MapboxDraw.modes.draw_polygon,
+        draw_rectangle: DrawRectangle
+      }, MapboxDraw.modes),
       styles: [
         {
           id: 'custom-draw-polygon-fill',
           type: 'fill',
           filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
-          paint: {
-            'fill-color': '#800020',
-            'fill-opacity': 0.05,
-          },
+          paint: { 'fill-color': '#800020', 'fill-opacity': 0.05 },
         },
         {
           id: 'custom-draw-polygon-stroke',
           type: 'line',
           filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
-          paint: {
-            'line-color': '#5A001E',
-            'line-width': 2,
-          },
-        },
-        {
-          id: 'custom-draw-vertex-halo',
-          type: 'circle',
-          filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']],
-          paint: {
-            'circle-radius': 10,
-            'circle-color': '#FFF',
-          },
+          paint: { 'line-color': '#5A001E', 'line-width': 2 },
         },
         {
           id: 'custom-draw-vertex',
           type: 'circle',
           filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']],
-          paint: {
-            'circle-radius': 6,
-            'circle-color': '#800020',
-          },
+          paint: { 'circle-radius': 6, 'circle-color': '#800020' },
         },
       ],
     });
 
     drawRef.current = draw;
-
     map.addControl(draw, 'top-left');
 
     const clearPolygon = () => {
-      const data = draw.getAll();
-      if (!data.features.length) return;
-
-      const lastId = data.features[data.features.length - 1].id;
-      const pids = data.features
-        .filter(f => f.geometry.type === 'Polygon' && f.id !== lastId)
-        .map(f => f.id);
-
-      draw.delete(pids);
+      if (!drawRef.current || !drawnPolygonIdRef.current) return;
+      drawRef.current.delete([drawnPolygonIdRef.current]);
       setDrawnPolygon(null);
       drawnPolygonIdRef.current = null;
     };
 
     const onDrawCreate = e => {
+      if (drawnPolygonIdRef.current) clearPolygon();
       const newFeature = e.features[0];
-      setDrawnPolygon(newFeature.geometry);
       drawnPolygonIdRef.current = newFeature.id;
+      setDrawnPolygon(newFeature.geometry);
+      onDrawingChange?.(true);
     };
 
     const onDrawUpdate = e => {
       const updatedFeature = e.features[0];
-      setDrawnPolygon(updatedFeature.geometry);
       drawnPolygonIdRef.current = updatedFeature.id;
+      setDrawnPolygon(updatedFeature.geometry);
+      onDrawingChange?.(true);
     };
 
-    const onDrawDelete = () => {
+    const onDrawDelete = e => {
       setDrawnPolygon(null);
       drawnPolygonIdRef.current = null;
-    };
-
-    const onDrawSelectionChange = e => {
-      if (e.features.length > 0) {
-        const selectedFeature = e.features[0];
-        if (drawnPolygonIdRef.current !== selectedFeature.id) {
-          setDrawnPolygon(selectedFeature.geometry);
-          drawnPolygonIdRef.current = selectedFeature.id;
-        }
-        // jeśli to ten sam poligon, nic nie robimy, żeby uniknąć zbędnego renderu
-      } else {
-        setDrawnPolygon(null);
-        drawnPolygonIdRef.current = null;
-      }
-    };
-
-    const onModeChange = () => {
-      if (draw.getMode() === 'draw_polygon') {
-        clearPolygon();
-      }
+      onDrawingChange?.(true);
     };
 
     map.on('draw.create', onDrawCreate);
     map.on('draw.update', onDrawUpdate);
     map.on('draw.delete', onDrawDelete);
-    map.on('draw.selectionchange', onDrawSelectionChange);
-    map.on('draw.modechange', onModeChange);
 
     return () => {
       map.off('draw.create', onDrawCreate);
       map.off('draw.update', onDrawUpdate);
       map.off('draw.delete', onDrawDelete);
-      map.off('draw.selectionchange', onDrawSelectionChange);
-      map.off('draw.modechange', onModeChange);
       map.removeControl(draw);
     };
-  }, [map]);
+  }, [map, onDrawingChange]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (regionGeometry && drawRef.current) {
       drawRef.current.deleteAll();
       setDrawnPolygon(null);
@@ -139,5 +92,24 @@ export function useDrawPolygon(map, regionGeometry) {
     }
   }, [regionGeometry]);
 
-  return drawnPolygon;
+  const drawPolygon = () => {
+    if (!drawRef.current) return;
+    drawRef.current.changeMode('draw_polygon');
+    onDrawingChange?.(false);
+  };
+
+  const drawRectangle = () => {
+    if (!drawRef.current) return;
+    drawRef.current.changeMode('draw_rectangle');
+    onDrawingChange?.(false);
+  };
+
+  const deletePolygon = () => {
+    if (!drawRef.current || !drawnPolygonIdRef.current) return;
+    drawRef.current.delete([drawnPolygonIdRef.current]);
+    setDrawnPolygon(null);
+    drawnPolygonIdRef.current = null;
+  };
+
+  return { drawnPolygon, drawPolygon, drawRectangle, deletePolygon };
 }

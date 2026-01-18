@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
-export function useFetchPointsData({ limit = 500000, polygon = null }) {
+export function useFetchPointsData({ limit = 500_000, polygon = null }) {
   const [features, setFeatures] = useState([]);
-  const [loading, setLoading] = useState([true])
+  const [loading, setLoading] = useState(true);
   const skip = useRef(0);
 
   useEffect(() => {
@@ -14,60 +14,44 @@ export function useFetchPointsData({ limit = 500000, polygon = null }) {
     const fetchData = async () => {
       try {
         if (polygon) {
-          console.log("Wysyłam do backendu polygon:", polygon);
           const recursiveFetchPoly = async () => {
             const response = await fetch('http://localhost:8000/api/zdjecia/filter', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                polygon: polygon,
-                skip:    skip.current,
-                limit
-              })
+              body: JSON.stringify({ polygon, skip: skip.current, limit })
             });
-            const data = await response.json();
-
-            if (isCancelled) return;
-            if (!data.features || data.features.length === 0) {
+            if (!response.ok) {
+              console.error('Server error', response.status);
               setLoading(false);
               return;
             }
-            setFeatures(prev => [...prev, ...data.features]);
+            const data = await response.json();
+            if (isCancelled) return;
+            if (!data.features?.length) {
+              setLoading(false);
+              return;
+            }
+            setFeatures(prev => {
+              const next = [...prev, ...data.features];
+              return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+            });
             skip.current += limit;
             await recursiveFetchPoly();
           };
-
           await recursiveFetchPoly();
         } else {
-          const recursiveFetch = async () => {
-            console.log("Fetchowanie danych...");
-            const response = await fetch(`http://localhost:8000/api/zdjecia?skip=${skip.current}&limit=${limit}`);
-            console.log("Odpowiedź z serwera:", response);
-            const data = await response.json();
-
-            if (isCancelled) return;
-            if (!data.features || data.features.length === 0) {
-              setLoading(false);
-              return;
-            }           
-            setFeatures(prev => [...prev, ...data.features]);
-            skip.current += limit;
-            await recursiveFetch();
-          };
-
-          await recursiveFetch();
+          setFeatures([]);
+          setLoading(false);
         }
       } catch (err) {
-        console.error('Błąd podczas pobierania danych:', err);
+        console.error('Fetch error', err);
+        setLoading(false);
       }
     };
 
     fetchData();
-
-    return () => {
-      isCancelled = true;
-    };
+    return () => { isCancelled = true; };
   }, [limit, polygon]);
 
-  return {features, loading};
+  return useMemo(() => ({ features, loading }), [features, loading]);
 }

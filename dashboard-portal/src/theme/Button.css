@@ -1,0 +1,36 @@
+.button-icon {
+    border: 1px solid #ddd;
+    background-color: rgb(255, 255, 255);
+    margin-left: 1px;
+    padding: 6px;
+    border-radius: 4px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 0 1.1px rgba(0, 0, 0, .1);
+    cursor: pointer;
+}
+
+.button-icon-img {
+    padding: 2px;
+    width: 25px;
+    height: 25px;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.button-icon:hover {
+    background-color: rgba(240, 240, 240, 255);
+}
+
+.button-icon:active {
+    background-color: rgba(200, 200, 200, 255);
+}
+
+.button-icon.active {
+  background-color: rgba(240, 240, 240, 1);
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.3);
+}
+

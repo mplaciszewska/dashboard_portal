@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+venv_test/
+*.sqlite3
+*.log
+*.csv
+.git/
+data/enhanced_fetch_and_save.py
