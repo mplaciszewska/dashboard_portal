@@ -1,5 +1,6 @@
 import csv
 from io import StringIO
+
 from ..models import Feature
 
 def export_features_csv(data: dict) -> bytes:
@@ -10,6 +11,8 @@ def export_features_csv(data: dict) -> bytes:
 
     header = [
         "id",
+        "longitude",
+        "latitude",
         "rok_wykonania",
         "kolor",
         "charakterystyka_przestrzenna",
@@ -23,8 +26,11 @@ def export_features_csv(data: dict) -> bytes:
 
     for feature in features:
         props = feature.properties
+        geom = feature.geometry
         row = [
             props.id,
+            geom.get("coordinates")[0],
+            geom.get("coordinates")[1],
             props.rok_wykonania or "",
             props.kolor or "",
             f"{props.charakterystyka_przestrzenna:.6f}" if props.charakterystyka_przestrzenna is not None else "",

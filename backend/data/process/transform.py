@@ -2,7 +2,8 @@
 import geopandas as gpd
 import pandas as pd
 import hashlib
-import numpy as np
+from shapely.geometry import Point
+
 
 def to_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     if gdf.crs and gdf.crs.to_epsg() != 4326:
@@ -13,7 +14,7 @@ def to_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def hash_attributes(row, exclude_columns=None):
     if exclude_columns is None:
-        exclude_columns = ['uid', 'id']
+        exclude_columns = ['uid', 'id', 'gml_id']
     exclude_columns = set(exclude_columns)
     
     row = row.copy()
@@ -31,7 +32,12 @@ def hash_attributes(row, exclude_columns=None):
             values.append('NULL')
         elif c == 'geometry':
             if hasattr(v, 'wkt'):
-                values.append(v.wkt)
+                geom = v
+                if isinstance(geom, Point):
+                    rounded = Point(round(geom.x, 6), round(geom.y, 6))
+                    values.append(rounded.wkt)
+                else:
+                    values.append(v.wkt)
             else:
                 values.append(str(v))
         elif isinstance(v, float):
@@ -49,9 +55,9 @@ def deduplicate_gdf(gdf, hash_column='uid'):
 
 
 def hash_attributes_vectorized(gdf, exclude_columns=None):
-    """Vectorized version of hash computation using WKB for geometry"""
+    """Vectorized version of hash computation using rounded WKT for geometry"""
     if exclude_columns is None:
-        exclude_columns = ['uid', 'id']
+        exclude_columns = ['uid', 'id', 'gml_id']
     exclude_columns = set(exclude_columns)
     
     df = gdf.copy()
@@ -64,10 +70,14 @@ def hash_attributes_vectorized(gdf, exclude_columns=None):
     hash_data = []
     for col in columns:
         if col == 'geometry':
-            # WKB geometry
-            hash_data.append(df[col].apply(
-                lambda x: x.wkb if hasattr(x, 'wkb') else str(x).encode("utf-8")
-            ))
+            def round_geometry(geom):
+                if hasattr(geom, 'wkt'):
+                    if isinstance(geom, Point):
+                        rounded = Point(round(geom.x, 6), round(geom.y, 6))
+                        return rounded.wkt
+                    return geom.wkt
+                return str(geom)
+            hash_data.append(df[col].apply(round_geometry))
         elif df[col].dtype in ['float64', 'float32']:
             hash_data.append(df[col].fillna('NULL').apply(lambda x: f"{x:.10f}" if x != 'NULL' else 'NULL'))
         else:

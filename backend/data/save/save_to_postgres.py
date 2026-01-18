@@ -1,8 +1,7 @@
 
 import geopandas as gpd
 from datetime import datetime
-from sqlalchemy import create_engine, text, MetaData, Table
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import create_engine, text
 from sqlalchemy.types import Text, Integer, DOUBLE_PRECISION, BIGINT
 
 class PostgresSaver:
@@ -24,6 +23,11 @@ class PostgresSaver:
             max_id = conn.execute(text(f"SELECT COALESCE(MAX(id),0) FROM {table_name}")).scalar()
         gdf_chunk = gdf_chunk.reset_index(drop=True)
         gdf_chunk['id'] = range(max_id + 1, max_id + 1 + len(gdf_chunk))
+        
+        gdf_columns = ['id', 'gml_id', 'numer_szeregu', 'numer_zdjecia', 'rok_wykonania',
+                       'data_nalotu', 'charakterystyka_przestrzenna', 'kolor',
+                       'karta_pracy', 'numer_zgloszenia', 'zrodlo_danych',
+                       'url_do_pobrania', 'dt_pzgik', 'uid', 'geometry']
 
         dtype_mapping = { 
             'id': BIGINT, 
@@ -41,15 +45,14 @@ class PostgresSaver:
             'dt_pzgik': Text,
             'uid': Text 
         }
-        dtype = {col: dtype_mapping[col] for col in gdf_chunk.columns if col in dtype_mapping}
+        dtype = {col: dtype_mapping[col] for col in gdf_columns if col in dtype_mapping}
 
         temp_table = f"{table_name}_tmp"
         gdf_chunk.to_postgis(temp_table, self.engine, if_exists="replace", index=False, dtype=dtype)
 
         with self.engine.begin() as conn:
             total_records = len(gdf_chunk)
-            
-            columns = [col for col in gdf_chunk.columns if col != 'geometry']
+            columns = [col for col in gdf_columns if col not in ['geometry', 'id']]
             columns_str = ", ".join(columns)
             
             result = conn.execute(text(f"""

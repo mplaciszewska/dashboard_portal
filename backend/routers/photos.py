@@ -2,8 +2,16 @@ from fastapi.responses import JSONResponse
 from fastapi import APIRouter
 import json
 
-from ..models import Feature, FeatureProperties, PolygonModel
-from ..db import get_connection, release_connection, DatabaseTables
+from ..models import (
+    Feature,
+    FeatureProperties,
+    PolygonModel
+)
+from ..db import (
+    get_connection,
+    release_connection,
+    DatabaseTables
+)
 
 router = APIRouter()
 

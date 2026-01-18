@@ -1,7 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from .db import init_pool
-from .routers import db_metadata, photos, regions, report, tiles
+from .routers import (
+    db_metadata,
+    photos,
+    regions,
+    report,
+    tiles
+)
 
 # uvicorn main:app --reload
 # uvicorn backend.main:app --reload

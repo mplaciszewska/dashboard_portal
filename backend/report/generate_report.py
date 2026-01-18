@@ -9,8 +9,18 @@ from reportlab.platypus.flowables import HRFlowable
 
 from .template.template import TemplateBuilder
 from .template.style import StyleBuilder
-from .template.settings import ReportSettings, ReportColors, ReportConfig
-from .template.utils import is_valid_date, is_valid_month, create_info_box, create_table, sort_key
+from .template.settings import (
+    ReportSettings,
+    ReportColors,
+    ReportConfig
+)
+from .template.utils import (
+    is_valid_date,
+    is_valid_month,
+    create_info_box,
+    create_table,
+    sort_key
+)
 from ..models import Feature
 
 def generate_report_pdf(data: dict) -> bytes:
@@ -56,7 +66,6 @@ def generate_report_pdf(data: dict) -> bytes:
     area_name = data.get("area_name", "Nieznany obszar")
     area_size = data.get("area", 0)
     last_update = data.get("last_update", "Brak danych")
-    print(f"last update: {last_update}")
     features: list[Feature] = data.get("features", [])
     count = len(features)
     density = count / area_size if area_size > 0 else 0
@@ -68,7 +77,7 @@ def generate_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 0.1*inch))
     
     box2 = create_info_box(styles, "Powierzchnia", f"{area_size:.2f} km²", box_width)
-    box3 = create_info_box(styles, "Liczba zdjęć", f"{count:,}", box_width)
+    box3 = create_info_box(styles, "Liczba zdjęć", f"{count:}", box_width)
     box4 = create_info_box(styles, "Gęstość", f"{density:.0f} zdjęć/km²", box_width)
     
     info_boxes = [[box2, box3, box4]]
@@ -127,6 +136,10 @@ def generate_report_pdf(data: dict) -> bytes:
     most_common_year = str(max(set(years_list), key=years_list.count)) if years_list else "Brak danych"
     colors_list = [f.properties.kolor for f in features if f.properties.kolor is not None]
     most_common_color = str(max(set(colors_list), key=colors_list.count)) if colors_list else "Brak danych"
+
+    types_count = Counter(f.properties.charakterystyka_przestrzenna or "Nieznany" for f in features)
+    sorted_types = sorted(types_count.items(), key=lambda x: -x[1])
+    most_common_gsd = sorted_types[0][0] if sorted_types else "Brak danych"
     
     elements.append(Paragraph("Szczegółowe Informacje", styles['section_header']))
     elements.append(Spacer(1, 0.1*inch))
@@ -136,6 +149,7 @@ def generate_report_pdf(data: dict) -> bytes:
         ["Zdjęcia cyfrowe", f"{digital_count:,}"],
         ["Rok największej liczby zdjęć", most_common_year],
         ["Najczęstszy kolor zdjęć", most_common_color],
+        ["Najczęstsza rozdzielczość", most_common_gsd],
         ["Zdjęcia w okresie wegetacji", f"{veg_counts['Okres wegetacji']:,}"],
         ["Zdjęcia poza wegetacją", f"{veg_counts['Poza wegetacją']:,}"],
         ["Zdjęcia bez daty nalotu", f"{veg_counts['Brak danych']:,}"],
@@ -173,9 +187,6 @@ def generate_report_pdf(data: dict) -> bytes:
     # resolution section
     elements.append(Paragraph("Charakterystyka Przestrzenna (Skala/GSD)", styles['section_header']))
     elements.append(Spacer(1, 0.1*inch))
-    
-    types_count = Counter(f.properties.charakterystyka_przestrzenna or "Nieznany" for f in features)
-    sorted_types = sorted(types_count.items(), key=lambda x: -x[1])
     
     table_data = [["Skala/GSD", "Liczba zdjęć", "Udział %"]]
     total_types = sum(types_count.values())

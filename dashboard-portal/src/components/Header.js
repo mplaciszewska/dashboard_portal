@@ -1,7 +1,7 @@
 import React from 'react';
 import { colors } from "../theme/colors";
 
-function Header({ isTileMode, loading, onDownloadPDF, onExportCSV }) {
+function Header({ isTileMode, loading, onDownloadPDF, onExportCSV, onExportGeoJSON }) {
   const isDisabled = isTileMode || loading;
   
   return (
@@ -38,6 +38,19 @@ function Header({ isTileMode, loading, onDownloadPDF, onExportCSV }) {
           disabled={isDisabled}
         >
           Eksport do CSV
+        </button>
+        <button
+          className="export-button"
+          style={{
+            backgroundColor: colors.secondaryOpaque,
+            opacity: isDisabled ? 0.3 : 1,
+            cursor: isDisabled ? 'not-allowed' : 'pointer',
+            pointerEvents: isDisabled ? 'none' : 'auto',
+          }}
+          onClick={onExportGeoJSON}
+          disabled={isDisabled}
+        >
+          Eksport do GeoJSON
         </button>
       </div>
     </header>

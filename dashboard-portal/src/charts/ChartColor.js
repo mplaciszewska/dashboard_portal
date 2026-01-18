@@ -43,7 +43,6 @@ function groupColors(features, stats) {
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
 
-// Add these props: onCategoryClick, selectedCategory
 export function ChartColor({ features, stats, onCategoryClick, selectedCategory }) {
   const [data, setData] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);

@@ -58,7 +58,7 @@ function TerytSelection({ onConfirm }) {
     <div className="teryt-selection"
           style={{
             position: 'absolute',
-            top: '115px',
+            top: '150px',
             left: '8px',
             zIndex: 1000,
             borderRadius: '4px',

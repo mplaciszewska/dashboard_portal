@@ -53,6 +53,5 @@ export function useFetchPointsData({ limit = 500_000, polygon = null }) {
     return () => { isCancelled = true; };
   }, [limit, polygon]);
 
-  /*  stable return value  */
   return useMemo(() => ({ features, loading }), [features, loading]);
 }

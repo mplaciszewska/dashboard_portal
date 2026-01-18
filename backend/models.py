@@ -40,6 +40,7 @@ class Region(BaseModel):
     geometry: Dict[str, Any]
     properties: RegionProperties
 
+
 class Metadata(TypedDict):
     records_count: int
     last_update: str

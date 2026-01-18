@@ -1,5 +1,18 @@
 from psycopg2.pool import SimpleConnectionPool
-from .POSTGRES import dbname, user, password, host, port, photo_table, metadata_table, woj_table, pow_table, gmi_table
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+dbname = os.getenv("POSTGRES_DB")
+user = os.getenv("POSTGRES_USER")
+password = os.getenv("POSTGRES_PASSWORD")
+host = os.getenv("POSTGRES_HOST", "localhost")
+port = int(os.getenv("POSTGRES_PORT", "5432"))
+photo_table = os.getenv("PHOTO_TABLE", "zdjecia_lotnicze")
+metadata_table = os.getenv("METADATA_TABLE", "metadane")
+woj_table = os.getenv("WOJEWODZTWA_TABLE", "wojewodztwa")
+pow_table = os.getenv("POWIATY_TABLE", "powiaty")
+gmi_table = os.getenv("GMINY_TABLE", "gminy")
 
 
 class DatabaseTables:
@@ -15,7 +28,7 @@ def init_pool():
     global pool
     if pool is None:
         pool = SimpleConnectionPool(
-            minconn=1,
+            minconn=3,
             maxconn=10,
             dbname=dbname,
             user=user,

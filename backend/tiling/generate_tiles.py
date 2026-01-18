@@ -1,8 +1,19 @@
 import psycopg2
 import mercantile
-from ..POSTGRES import dbname, user, password, host, port, photo_table
 import os
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
+dbname = os.getenv("POSTGRES_DB")
+user = os.getenv("POSTGRES_USER")
+password = os.getenv("POSTGRES_PASSWORD")
+host = os.getenv("POSTGRES_HOST", "localhost")
+port = int(os.getenv("POSTGRES_PORT", "5432"))
+photo_table = os.getenv("PHOTO_TABLE", "zdjecia_lotnicze")
+tiles_output_dir = os.getenv("TILES_OUTPUT_DIR", "tiles")
+tiles_min_zoom = int(os.getenv("TILES_MIN_ZOOM", "3"))
+tiles_max_zoom = int(os.getenv("TILES_MAX_ZOOM", "12"))
 
 # python -m backend.tiling.generate_tiles
 
@@ -61,13 +72,14 @@ class MVTGenerator:
             cur.execute(sql)
             rows = cur.fetchall()
         
-        stats = {"photo_type": {},
-                  "years": {},
-                  "color": {},
-                  "report_numbers": {},
-                  "dt_pzgik_rok_correlation": {},
-                  "flight_dates": {}
-                 }
+        stats = {
+            "photo_type": {},
+            "years": {},
+            "color": {},
+            "report_numbers": {},
+            "dt_pzgik_rok_correlation": {},
+            "flight_dates": {}
+        }
 
         for rok, res, kolor, zrodlo, numer_zgloszenia, dt_pzgik, data_nalotu in rows:
             if zrodlo not in stats["photo_type"]:
@@ -139,13 +151,7 @@ class MVTGenerator:
                         ST_Transform(ST_TileEnvelope(%s, %s, %s), 3857),
                         4096, 0, true
                     ) AS geom,
-                    id,
-                    rok_wykonania,
-                    kolor,
-                    zrodlo_danych,
-                    numer_zgloszenia,
-                    charakterystyka_przestrzenna,
-                    url_do_pobrania
+                    id
                 FROM {self.table_name}
                 WHERE ST_Intersects(
                     {self.geom_column},
@@ -245,15 +251,22 @@ if __name__ == "__main__":
         "password": password
     }
 
-    generator = MVTGenerator(db_config, table_name=photo_table, geom_column="geometry")
-    tiles = generator.generate_tiles_for_extent(zoom_min=2, zoom_max=12)
+    generator = MVTGenerator(
+        db_config,
+        table_name=photo_table,
+        geom_column="geometry"
+    )
+    
+    tiles = generator.generate_tiles_for_extent(
+        zoom_min=tiles_min_zoom,
+        zoom_max=tiles_max_zoom
+    )
 
     for z, x, y, tile_bytes in tiles:
-        folder = f"tiles2/{z}/{x}"
+        folder = f"{tiles_output_dir}/{z}/{x}"
         os.makedirs(folder, exist_ok=True)
         filename = f"{folder}/{y}.pbf"
         with open(filename, "wb") as f:
             f.write(tile_bytes)
-        print(f"Kafel zapisany: {filename}")
     
-    generator.save_stats("tiles2/stats.json")
+    generator.save_stats(f"{tiles_output_dir}/stats.json")

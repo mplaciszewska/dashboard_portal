@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from ..models import Metadata
-from ..db import get_connection, release_connection, DatabaseTables
+from ..db import (
+    get_connection,
+    release_connection,
+    DatabaseTables
+)
 
 router = APIRouter()
 

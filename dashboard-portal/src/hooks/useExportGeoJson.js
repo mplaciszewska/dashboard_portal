@@ -1,5 +1,5 @@
-export const handleExportCsv = async (filteredFeatures, polygonArea, regionGeometry) => {
-  console.log("Eksport CSV dla obszaru:", polygonArea?.name || "nieznany");
+export const handleExportGeoJson = async (filteredFeatures, polygonArea, regionGeometry) => {
+  console.log("Eksport GeoJSON dla obszaru:", polygonArea?.name || "nieznany");
 
   if (!filteredFeatures || filteredFeatures.length === 0) {
     alert("Brak danych do eksportu.");
@@ -9,7 +9,7 @@ export const handleExportCsv = async (filteredFeatures, polygonArea, regionGeome
   const exportLimit = 100_000;
 
   if (filteredFeatures.length > exportLimit) {
-    alert(`Eksport CSV dla więcej niż ${exportLimit.toLocaleString()} zdjęć nie jest obsługiwany.`);
+    alert(`Eksport GeoJSON dla więcej niż ${exportLimit.toLocaleString()} zdjęć nie jest obsługiwany.`);
     return;
   }
 
@@ -30,7 +30,7 @@ export const handleExportCsv = async (filteredFeatures, polygonArea, regionGeome
   }));
 
   try {
-    const res = await fetch("http://localhost:8000/api/report/csv", {
+    const res = await fetch("http://localhost:8000/api/report/geojson", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ features: featuresPayload }),
@@ -45,14 +45,14 @@ export const handleExportCsv = async (filteredFeatures, polygonArea, regionGeome
 
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `export_${polygonArea?.name || "obszar"}.csv`);
+    link.setAttribute("download", `export_${polygonArea?.name || "obszar"}.geojson`);
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
 
   } catch (error) {
-    console.error("Błąd eksportu CSV:", error);
-    alert("Nie udało się wyeksportować danych do CSV.");
+    console.error("Błąd eksportu GeoJSON:", error);
+    alert("Nie udało się wyeksportować danych do GeoJSON.");
   }
 };

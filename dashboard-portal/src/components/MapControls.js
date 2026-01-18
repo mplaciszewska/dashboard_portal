@@ -43,7 +43,7 @@ export const LegendControl = ({ yearGroups }) => {
 }
 
 
-export const DrawControls = ({ drawPolygon, drawRectangle, deletePolygon }) => {
+export const DrawControls = ({ drawPolygon, drawRectangle, deletePolygon, exportPolygon, hasPolygon }) => {
     return (
         <div style={{ position: 'absolute', top: 10, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: '5px' }}>
             <button className="button-icon" onClick={drawPolygon}>
@@ -52,8 +52,22 @@ export const DrawControls = ({ drawPolygon, drawRectangle, deletePolygon }) => {
             <button className="button-icon" onClick={drawRectangle}>
                 <img className="button-icon-img" src="/images/rectangle.png" alt="Draw Rectangle"></img>
             </button>
-            <button className="button-icon" onClick={deletePolygon}>
+            <button 
+                className="button-icon" 
+                onClick={deletePolygon}
+                disabled={!hasPolygon}
+                style={{ opacity: hasPolygon ? 1 : 0.3, cursor: hasPolygon ? 'pointer' : 'not-allowed' }}
+            >
                 <img className="button-icon-img" src="/images/trash-can.png" alt="Delete Shape"></img>
+            </button>
+            <button 
+                className="button-icon" 
+                onClick={exportPolygon}
+                disabled={!hasPolygon}
+                style={{ opacity: hasPolygon ? 1 : 0.3, cursor: hasPolygon ? 'pointer' : 'not-allowed' }}
+                title="Eksportuj polygon do GeoJSON"
+            >
+                <img className="button-icon-img" src="/images/download.png" alt="Export Polygon"></img>
             </button>
         </div>
     )

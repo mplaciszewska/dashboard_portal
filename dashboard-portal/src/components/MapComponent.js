@@ -6,10 +6,10 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useDrawPolygon } from '../hooks/useDrawPolygon';
+import { exportPolygonGeoJson } from '../utils/exportPolygon';
 import './MapComponent.css';
 import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
-import { colors } from "../theme/colors";
 import { LegendControl, DrawControls, PopupWindow } from './MapControls';
 
 import { 
@@ -46,6 +46,10 @@ function MapComponent({ filteredFeatures, yearRange, setYearRange, minYear,
   const [zoomLevel, setZoomLevel] = useState(5);
   const [popup, setPopup] = useState(null);
   const [mapBorderRadius, setMapBorderRadius] = useState('8px 8px 0 0');
+
+  const handleExportPolygon = () => {
+    exportPolygonGeoJson(drawnPolygon);
+  };
 
   const handleYearChange = (event, newValue) => {
     if (loading) return;
@@ -254,6 +258,8 @@ function MapComponent({ filteredFeatures, yearRange, setYearRange, minYear,
         drawPolygon={drawPolygon}
         drawRectangle={drawRectangle}
         deletePolygon={deletePolygon}
+        exportPolygon={handleExportPolygon}
+        hasPolygon={!!drawnPolygon}
       />
       {selectedCategory && (
         <div className="filter-indicator">

@@ -16,11 +16,11 @@ import TerytSelection from './TerytSelection';
 import { useRegionGeometry } from '../hooks/useRegionGeometry';
 import { handleDownloadPDF } from '../hooks/useGenerateReportPdf';
 import { handleExportCsv } from '../hooks/useExportCsv';
+import { handleExportGeoJson } from '../hooks/useExportGeoJson';
 import { colors } from "../theme/colors";
 
 import { 
   generateYearGroups, 
-  isFeatureInCategory,
   filterFeaturesByCategory,
   filterFeaturesByYear,
   getYearRangeFromFeatures
@@ -178,6 +178,12 @@ function App() {
     }
   };
 
+  const handleExportGeoJSONClick = () => {
+    if (!isTileMode && !loading) {
+      handleExportGeoJson(filteredFeatures, polygonArea, regionGeometry);
+    }
+  };
+
   
   const handleCategoryClick = (chartType, value) => {
     if (loading) return;
@@ -197,6 +203,7 @@ function App() {
         loading={loading}
         onDownloadPDF={handleDownloadPDFClick}
         onExportCSV={handleExportCSVClick}
+        onExportGeoJSON={handleExportGeoJSONClick}
       />
       <div className="main-content" style={{ backgroundColor: colors.background }}>
         <div

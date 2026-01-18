@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 @dataclass
 class PolandBbox2180:
-    minx: int = 120_000
-    miny: int = 100_000
-    maxx: int = 820_000
-    maxy: int = 900_000
+    minx: int = 115_000
+    miny: int = 95_000
+    maxx: int = 825_000
+    maxy: int = 905_000
     step: int = 50_000
 
     def generate_bboxes(self):

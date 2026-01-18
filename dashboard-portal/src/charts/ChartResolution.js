@@ -6,17 +6,14 @@ import { tooltipStyle } from '../theme/tooltip';
 import { colorPalette, rgba } from '../theme/colors';
 
 
-// ...existing code...
 const CustomTooltip = ({ active, payload, label, chartType }) => {
   if (active && payload && payload.length) {
     const group = payload[0].payload.name;
     let displayGroup;
 
     if (chartType === 'analog') {
-      // analogowe: show as scale "1 : {group}"
       displayGroup = `1 : ${group}`;
     } else {
-      // cyfrowe: show as meters "X m"
       displayGroup = `${group} m`;
     }
 
@@ -28,7 +25,6 @@ const CustomTooltip = ({ active, payload, label, chartType }) => {
   }
   return null;
 };
-// ...existing code...
 
 function calculateStats(data) {
   if (!data || data.length === 0) {

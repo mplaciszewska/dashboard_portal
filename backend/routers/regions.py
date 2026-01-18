@@ -2,8 +2,15 @@ from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Query
 import json
 
-from ..models import Region, RegionProperties
-from ..db import get_connection, release_connection, DatabaseTables
+from ..models import (
+    Region,
+    RegionProperties
+)
+from ..db import (
+    get_connection,
+    release_connection,
+    DatabaseTables
+)
 
 
 router = APIRouter()
