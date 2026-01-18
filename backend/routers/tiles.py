@@ -1,11 +1,12 @@
 import json
+import os
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, FileResponse
 from pathlib import Path
 
 router = APIRouter()
 
-TILES_DIR = Path(__file__).parent.parent / "tiling" / "tiles"
+TILES_DIR = Path(os.getenv("TILES_OUTPUT_DIR", "backend/tiling/tiles"))
 STATS_FILE = TILES_DIR / "stats.json"
 
 @router.get("/tiling/tiles/stats.json")

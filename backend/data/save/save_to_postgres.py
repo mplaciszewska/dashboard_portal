@@ -48,7 +48,11 @@ class PostgresSaver:
         dtype = {col: dtype_mapping[col] for col in gdf_columns if col in dtype_mapping}
 
         temp_table = f"{table_name}_tmp"
-        gdf_chunk.to_postgis(temp_table, self.engine, if_exists="replace", index=False, dtype=dtype)
+        
+        with self.engine.begin() as conn:
+            conn.execute(text(f"DROP TABLE IF EXISTS {temp_table}"))
+        
+        gdf_chunk.to_postgis(temp_table, self.engine, if_exists="fail", index=False, dtype=dtype)
 
         with self.engine.begin() as conn:
             total_records = len(gdf_chunk)

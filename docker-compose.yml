@@ -16,6 +16,11 @@ services:
       POWIATY_TABLE: ${POWIATY_TABLE}
       GMINY_TABLE: ${GMINY_TABLE}
       CRON_SECRET: ${CRON_SECRET}
+      TILES_OUTPUT_DIR: ${TILES_OUTPUT_DIR}
+      TILES_MIN_ZOOM: ${TILES_MIN_ZOOM}
+      TILES_MAX_ZOOM: ${TILES_MAX_ZOOM}
+    volumes:
+      - ./backend/tiling/tiles:/workspace/tiles
     depends_on:
       - db
 
@@ -36,6 +41,11 @@ services:
       POWIATY_TABLE: ${POWIATY_TABLE}
       GMINY_TABLE: ${GMINY_TABLE}
       CRON_SECRET: ${CRON_SECRET}
+      TILES_OUTPUT_DIR: ${TILES_OUTPUT_DIR}
+      TILES_MIN_ZOOM: ${TILES_MIN_ZOOM}
+      TILES_MAX_ZOOM: ${TILES_MAX_ZOOM}
+    volumes:
+      - ./backend/tiling/tiles:/workspace/tiles
     depends_on:
       - db
 
