@@ -1,7 +1,7 @@
 import math
 
 
-def sanitize_json(obj):
+def sanitize_json(obj: object) -> object | None:
     if isinstance(obj, dict):
         return {k: sanitize_json(v) for k, v in obj.items()}
     elif isinstance(obj, list):

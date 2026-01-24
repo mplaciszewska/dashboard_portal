@@ -19,18 +19,14 @@ class PostgresSaver:
         )
     
     def append_unique_chunk_sql(self, gdf_chunk: gpd.GeoDataFrame, table_name: str) -> int:
-        with self.engine.connect() as conn:
-            max_id = conn.execute(text(f"SELECT COALESCE(MAX(id),0) FROM {table_name}")).scalar()
         gdf_chunk = gdf_chunk.reset_index(drop=True)
-        gdf_chunk['id'] = range(max_id + 1, max_id + 1 + len(gdf_chunk))
         
-        gdf_columns = ['id', 'gml_id', 'numer_szeregu', 'numer_zdjecia', 'rok_wykonania',
+        gdf_columns = ['gml_id', 'numer_szeregu', 'numer_zdjecia', 'rok_wykonania',
                        'data_nalotu', 'charakterystyka_przestrzenna', 'kolor',
                        'karta_pracy', 'numer_zgloszenia', 'zrodlo_danych',
                        'url_do_pobrania', 'dt_pzgik', 'uid', 'geometry']
 
         dtype_mapping = { 
-            'id': BIGINT, 
             'gml_id': Text,
             'numer_szeregu': Text,
             'numer_zdjecia': Text,
@@ -50,13 +46,13 @@ class PostgresSaver:
         temp_table = f"{table_name}_tmp"
         
         with self.engine.begin() as conn:
-            conn.execute(text(f"DROP TABLE IF EXISTS {temp_table}"))
+            conn.execute(text(f"DROP TABLE IF EXISTS {temp_table} CASCADE"))
         
         gdf_chunk.to_postgis(temp_table, self.engine, if_exists="fail", index=False, dtype=dtype)
 
         with self.engine.begin() as conn:
             total_records = len(gdf_chunk)
-            columns = [col for col in gdf_columns if col not in ['geometry', 'id']]
+            columns = [col for col in gdf_columns if col != 'geometry']
             columns_str = ", ".join(columns)
             
             result = conn.execute(text(f"""
@@ -79,7 +75,7 @@ class PostgresSaver:
         self,
         table_name: str,
         new_count: int | None = None,
-        metadata_table: str = "db_metadane"
+        metadata_table: str = "metadane"
     ):
         """
         Aktualizuje tabelę metadanych dla warstwy.

@@ -5,6 +5,7 @@ This script calls the database update function and conditionally runs tile gener
 import sys
 import os
 from dotenv import load_dotenv
+
 from backend.data.fetch_and_save import main as fetch_and_save_data
 from backend.tiling.generate_tiles import MVTGenerator
 
@@ -21,7 +22,6 @@ tiles_max_zoom = int(os.getenv("TILES_MAX_ZOOM", "12"))
 
 
 def generate_tiles():
-    """Generate vector tiles for the entire dataset"""
     print("\nStarting tile generation...")
     
     db_config = {

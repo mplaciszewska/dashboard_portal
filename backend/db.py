@@ -1,5 +1,6 @@
 from psycopg2.pool import SimpleConnectionPool
 import os
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,18 +25,30 @@ class DatabaseTables:
 
 pool = None
 
-def init_pool():
+
+def init_pool(
+    max_retries: int = 10,
+    retry_delay: int = 2
+) -> SimpleConnectionPool:
     global pool
     if pool is None:
-        pool = SimpleConnectionPool(
-            minconn=3,
-            maxconn=10,
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host,
-            port=port
-        )
+        for attempt in range(1, max_retries + 1):
+            try:
+                pool = SimpleConnectionPool(
+                    minconn=3,
+                    maxconn=10,
+                    dbname=dbname,
+                    user=user,
+                    password=password,
+                    host=host,
+                    port=port
+                )
+                break
+            except Exception as e:
+                if attempt == max_retries:
+                    print(f"Failed to connect to database after {max_retries} attempts: {e}")
+                    raise
+                time.sleep(retry_delay)
     return pool
 
 def get_connection():

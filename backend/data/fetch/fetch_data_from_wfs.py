@@ -10,15 +10,16 @@ import geopandas as gpd
 import fiona
 import time
 
+
 class WFSFetcher:
-    def __init__(self, wfs_url, max_retries=8, timeout=800, request_delay=5, retry_delay=5):
+    def __init__(self, wfs_url: str, max_retries: int = 8, timeout: int = 800, request_delay: int = 5, retry_delay: int = 5):
         self.wfs_url = wfs_url
         self.max_retries = max_retries
         self.timeout = timeout
         self.request_delay = request_delay
         self.retry_delay = retry_delay
 
-    def get_layers(self):
+    def get_layers(self) -> list[str]:
         capabilities_url = f"{self.wfs_url}?service=WFS&version=2.0.0&request=GetCapabilities"
         response = requests.get(capabilities_url, timeout=self.timeout)
         response.raise_for_status()
@@ -31,7 +32,7 @@ class WFSFetcher:
             
         return layers
 
-    def fetch_layer_by_bbox(self, layer, bbox=None):
+    def fetch_layer_by_bbox(self, layer: str, bbox: tuple[float, float, float, float] | None = None) -> gpd.GeoDataFrame:
         params = {
             "service": "WFS",
             "version": "2.0.0",

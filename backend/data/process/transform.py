@@ -12,7 +12,7 @@ def to_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
-def hash_attributes(row, exclude_columns=None):
+def hash_attributes(row: pd.Series, exclude_columns: list[str] | None = None) -> str:
     if exclude_columns is None:
         exclude_columns = ['uid', 'id', 'gml_id']
     exclude_columns = set(exclude_columns)
@@ -34,7 +34,7 @@ def hash_attributes(row, exclude_columns=None):
             if hasattr(v, 'wkt'):
                 geom = v
                 if isinstance(geom, Point):
-                    rounded = Point(round(geom.x, 6), round(geom.y, 6))
+                    rounded = Point(round(geom.x, 5), round(geom.y, 5))
                     values.append(rounded.wkt)
                 else:
                     values.append(v.wkt)
@@ -48,13 +48,13 @@ def hash_attributes(row, exclude_columns=None):
     hash_input = "|".join(values).encode("utf-8")
     return hashlib.sha256(hash_input).hexdigest()
 
-def deduplicate_gdf(gdf, hash_column='uid'):
+def deduplicate_gdf(gdf: gpd.GeoDataFrame, hash_column: str = 'uid') -> gpd.GeoDataFrame:
     gdf = gdf.copy()
     gdf = gdf.drop_duplicates(subset=hash_column)
     return gdf
 
 
-def hash_attributes_vectorized(gdf, exclude_columns=None):
+def hash_attributes_vectorized(gdf: gpd.GeoDataFrame, exclude_columns: list[str] | None = None) -> pd.Series:
     """Vectorized version of hash computation using rounded WKT for geometry"""
     if exclude_columns is None:
         exclude_columns = ['uid', 'id', 'gml_id']
@@ -70,22 +70,44 @@ def hash_attributes_vectorized(gdf, exclude_columns=None):
     hash_data = []
     for col in columns:
         if col == 'geometry':
-            def round_geometry(geom):
-                if hasattr(geom, 'wkt'):
-                    if isinstance(geom, Point):
-                        rounded = Point(round(geom.x, 6), round(geom.y, 6))
-                        return rounded.wkt
-                    return geom.wkt
-                return str(geom)
-            hash_data.append(df[col].apply(round_geometry))
-        elif df[col].dtype in ['float64', 'float32']:
-            hash_data.append(df[col].fillna('NULL').apply(lambda x: f"{x:.10f}" if x != 'NULL' else 'NULL'))
+            # Geometry is already rounded in fetch_and_save.py, just use WKT
+            hash_data.append(df[col].apply(lambda geom: geom.wkt if hasattr(geom, 'wkt') else str(geom)))
+        elif col == 'rok_wykonania':
+            # Integer column - ALWAYS format as integer string
+            hash_data.append(df[col].apply(lambda x: 'NULL' if pd.isna(x) else str(int(x))))
+        elif col == 'charakterystyka_przestrzenna':
+            # Float column - format whole numbers as integers, otherwise 2 decimals
+            def fmt_char(x):
+                if pd.isna(x):
+                    return 'NULL'
+                x = float(x)
+                if x == int(x):
+                    return str(int(x))
+                return f"{x:.2f}"
+            hash_data.append(df[col].apply(fmt_char))
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            # Other numeric columns - convert to float first, then format
+            def fmt_num(x):
+                if pd.isna(x):
+                    return 'NULL'
+                x = float(x)
+                if x == int(x):
+                    return str(int(x))
+                return f"{x:.2f}"
+            hash_data.append(df[col].apply(fmt_num))
         else:
             hash_data.append(df[col].fillna('NULL').astype(str).str.strip())
     
     combined = pd.DataFrame(hash_data).T
+    combined.columns = columns  # Ensure column names are set
     hash_strings = combined.apply(lambda row: b"|".join(
         r if isinstance(r, bytes) else str(r).encode("utf-8") for r in row
     ), axis=1)
+    
+    # DEBUG: Print sample hash strings for verification
+    if len(hash_strings) > 0:
+        print(f"  [HASH DEBUG] Sample hash string (record 0): {hash_strings.iloc[0][:150]}...")
+        if len(hash_strings) > 100:
+            print(f"  [HASH DEBUG] Sample hash string (record 100): {hash_strings.iloc[100][:150]}...")
     
     return hash_strings.apply(lambda x: hashlib.sha256(x).hexdigest())

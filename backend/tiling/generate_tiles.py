@@ -18,12 +18,17 @@ tiles_max_zoom = int(os.getenv("TILES_MAX_ZOOM", "12"))
 # python -m backend.tiling.generate_tiles
 
 class MVTGenerator:
-    def __init__(self, db_config, table_name=photo_table, geom_column="geometry"):
+    def __init__(
+        self,
+        db_config: dict,
+        table_name: str = photo_table,
+        geom_column: str = "geometry"
+    ):
         self.conn = psycopg2.connect(**db_config)
         self.table_name = table_name
         self.geom_column = geom_column
 
-    def get_extent(self):
+    def get_extent(self) -> tuple[float, float, float, float]:
         """Zwraca bounding box wszystkich danych w tabeli"""
         sql = f"""
         SELECT ST_XMin(ST_Extent({self.geom_column})), 
@@ -41,7 +46,7 @@ class MVTGenerator:
                 raise ValueError("Nie udało się pobrać extentu danych.")
 
 
-    def count_features_in_tile(self, z, x, y):
+    def count_features_in_tile(self, z: int, x: int, y: int) -> int:
         """Liczy obiekty w danym kaflu"""
         sql = f"""
         SELECT COUNT(*)
@@ -56,7 +61,7 @@ class MVTGenerator:
             return cur.fetchone()[0]
         
 
-    def save_stats(self, out_file="stats.json"):
+    def save_stats(self, out_file: str = "stats.json") -> None:
         sql = f"""
         SELECT 
             rok_wykonania,
@@ -80,37 +85,39 @@ class MVTGenerator:
             "dt_pzgik_rok_correlation": {},
             "flight_dates": {}
         }
+        try:
+            print(f"Saving statistics for tiles to {out_file}.")
+            for rok, res, kolor, zrodlo, numer_zgloszenia, dt_pzgik, data_nalotu in rows:
+                if zrodlo not in stats["photo_type"]:
+                    stats["photo_type"][zrodlo] = {"resolution": {}}
+                try:
+                    numeric_res = float(res)
+                except:
+                    numeric_res = res
 
-        for rok, res, kolor, zrodlo, numer_zgloszenia, dt_pzgik, data_nalotu in rows:
-            if zrodlo not in stats["photo_type"]:
-                stats["photo_type"][zrodlo] = {"resolution": {}}
-            try:
-                numeric_res = float(res)
-            except:
-                numeric_res = res
+                stats["photo_type"][zrodlo]["resolution"][numeric_res] = stats["photo_type"][zrodlo]["resolution"].get(numeric_res, 0) + 1
+                if rok:
+                    stats["years"][rok] = stats["years"].get(rok, 0) + 1
+                if kolor:
+                    stats["color"][kolor] = stats["color"].get(kolor, 0) + 1
+                    
+                if numer_zgloszenia:
+                    stats["report_numbers"][numer_zgloszenia] = stats["report_numbers"].get(numer_zgloszenia, 0) + 1
+                if data_nalotu:
+                    stats["flight_dates"][data_nalotu] = stats["flight_dates"].get(data_nalotu, 0) + 1
 
-            stats["photo_type"][zrodlo]["resolution"][numeric_res] = stats["photo_type"][zrodlo]["resolution"].get(numeric_res, 0) + 1
-            if rok:
-                stats["years"][rok] = stats["years"].get(rok, 0) + 1
-            if kolor:
-                stats["color"][kolor] = stats["color"].get(kolor, 0) + 1
+
+                if dt_pzgik and rok:
+                    if dt_pzgik not in stats["dt_pzgik_rok_correlation"]:
+                        stats["dt_pzgik_rok_correlation"][dt_pzgik] = {}
+                    stats["dt_pzgik_rok_correlation"][dt_pzgik][rok] = stats["dt_pzgik_rok_correlation"][dt_pzgik].get(rok, 0) + 1
                 
-            if numer_zgloszenia:
-                stats["report_numbers"][numer_zgloszenia] = stats["report_numbers"].get(numer_zgloszenia, 0) + 1
-            if data_nalotu:
-                stats["flight_dates"][data_nalotu] = stats["flight_dates"].get(data_nalotu, 0) + 1
+            with open(out_file, "w", encoding="utf-8") as f:
+                json.dump(stats, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error while saving stats: {e}")
 
-
-            if dt_pzgik and rok:
-                if dt_pzgik not in stats["dt_pzgik_rok_correlation"]:
-                    stats["dt_pzgik_rok_correlation"][dt_pzgik] = {}
-                stats["dt_pzgik_rok_correlation"][dt_pzgik][rok] = stats["dt_pzgik_rok_correlation"][dt_pzgik].get(rok, 0) + 1
-            
-        with open(out_file, "w", encoding="utf-8") as f:
-            json.dump(stats, f, ensure_ascii=False, indent=2)
-
-
-    def get_dynamic_limit(self, n, z, max_clusters=50000):
+    def get_dynamic_limit(self, n: int, z: int, max_clusters: int = 50000) -> int:
         """Dobiera max_clusters jako procent obiektów zależnie od zoom"""
         if z <= 5:
             percent = 0.05
@@ -118,7 +125,7 @@ class MVTGenerator:
             percent = 0.3
         elif z <= 10:
             percent = 0.55
-        elif z < 12:
+        elif z < tiles_max_zoom:
             percent = 0.8
         else:
             return n
@@ -126,7 +133,7 @@ class MVTGenerator:
         return min(int(n * percent), max_clusters)
 
 
-    def get_dynamic_eps(self, n): 
+    def get_dynamic_eps(self, n: int) -> int:
         """Dobiera eps zależnie od liczby obiektów"""
         if n < 500: return 5
         elif n < 15000: return 10
@@ -136,14 +143,14 @@ class MVTGenerator:
         elif n < 1000000: return 100
         else: return 125
 
-    def get_tile(self, z, x, y):
+    def get_tile(self, z: int, x: int, y: int) -> bytes | None:
         """Generuje kafel MVT z dynamicznym DBSCAN lub pełnymi danymi"""
         n = self.count_features_in_tile(z, x, y)
         if n == 0:
             return None
 
         # Pobieranie pełnych danych dla wysokich zoomów
-        if z >= 12:
+        if z >= tiles_max_zoom:
             sql = f"""
             WITH mvtgeom AS (
                 SELECT ST_AsMVTGeom(
@@ -151,7 +158,8 @@ class MVTGenerator:
                         ST_Transform(ST_TileEnvelope(%s, %s, %s), 3857),
                         4096, 0, true
                     ) AS geom,
-                    id
+                    id,
+                    rok_wykonania
                 FROM {self.table_name}
                 WHERE ST_Intersects(
                     {self.geom_column},
@@ -219,13 +227,13 @@ class MVTGenerator:
             cur.execute(sql, params)
             result = cur.fetchone()
             if result and result[0]:
-                print(f"Generated tile z={z}, x={x}, y={y}, n={n}, mode={'FULL' if z>=14 else 'CLUSTER'}")
+                print(f"Generated tile z={z}, x={x}, y={y}, n={n}, mode={'FULL' if z>=tiles_max_zoom else 'CLUSTER'}")
                 return result[0]
             else:
                 return None
 
 
-    def generate_tiles_for_extent(self, zoom_min=0, zoom_max=14):
+    def generate_tiles_for_extent(self, zoom_min: int = 0, zoom_max: int = 14) -> list[tuple[int, int, int, bytes]]:
         """Generuje kafle MVT tylko dla extentu danych"""
         minx, miny, maxx, maxy = self.get_extent()
         tiles = []

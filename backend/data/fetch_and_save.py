@@ -1,6 +1,7 @@
 import time
 import os
 import pandas as pd
+import geopandas as gpd
 from dotenv import load_dotenv
 from sqlalchemy import text
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,8 +26,11 @@ metadata_table = os.getenv("METADATA_TABLE", "metadane")
 
 # python -m backend.data.fetch_and_save
 
-def fetch_bbox_parallel(fetcher, layer, bbox):
-    """Helper function for parallel bbox fetching"""
+def fetch_bbox_parallel(
+    fetcher: WFSFetcher,
+    layer: str,
+    bbox: tuple[float, float, float, float]
+) -> gpd.GeoDataFrame | None:
     try:
         gdf = fetcher.fetch_layer_by_bbox(layer, bbox=bbox)
         if not gdf.empty:
@@ -42,14 +46,19 @@ def main():
 
     bbox_generator = PolandBbox2180()
     bboxes = bbox_generator.generate_bboxes()
-    fetcher = WFSFetcher(wfs_url, request_delay=1, retry_delay=2, timeout=500)
+    fetcher = WFSFetcher(
+        wfs_url,
+        request_delay=1,
+        retry_delay=2,
+        timeout=500
+    )
     saver = PostgresSaver(db_url)
 
     with saver.engine.begin() as conn:
 
         conn.execute(text(f"""
             CREATE TABLE if not exists {photo_table} (
-                id BIGINT PRIMARY KEY,
+                id BIGSERIAL PRIMARY KEY,
                 gml_id TEXT,
                 numer_szeregu TEXT,
                 numer_zdjecia TEXT,
@@ -190,9 +199,32 @@ def main():
             print(f"Combining {len(layer_gdfs)} bbox results...")
             full_gdf = pd.concat(layer_gdfs, ignore_index=True)
             
+
+            dtype_mapping = {
+                'rok_wykonania': 'int32',  # standard int (WFS native)
+                'charakterystyka_przestrzenna': 'float64',  # standard float
+            }
+            print(f"  [DEBUG] Normalizing dtypes...")
+            for col, dtype in dtype_mapping.items():
+                if col in full_gdf.columns:
+                    old_dtype = full_gdf[col].dtype
+                    full_gdf[col] = full_gdf[col].astype(dtype)
+                    print(f"    {col}: {old_dtype} → {full_gdf[col].dtype}")
+            
+            # CRITICAL: Round geometry coordinates NOW to ensure consistency
+            # Python's round() in hash function can produce different results due to float precision
+            from shapely.geometry import Point
+            def normalize_geometry(geom):
+                if isinstance(geom, Point):
+                    # Round to 5 decimals and reconstruct Point
+                    return Point(round(geom.x, 5), round(geom.y, 5))
+                return geom
+
+            full_gdf['geometry'] = full_gdf['geometry'].apply(normalize_geometry)
+            
             del layer_gdfs
             
-            exclude_from_hash = ['uid', 'id', 'gml_id']
+            exclude_from_hash = ['uid', 'id', 'gml_id', 'dt_pzgik']  # dt_pzgik is processing metadata, not photo identity
             
             print(f"Computing hashes for {len(full_gdf)} records...")
             full_gdf['uid'] = hash_attributes_vectorized(full_gdf, exclude_columns=exclude_from_hash)
