@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: ${POSTGRES_PORT}
       PHOTO_TABLE: ${PHOTO_TABLE}
       METADATA_TABLE: ${METADATA_TABLE}
       WOJEWODZTWA_TABLE: ${WOJEWODZTWA_TABLE}
@@ -35,7 +35,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: ${POSTGRES_PORT}
       PHOTO_TABLE: ${PHOTO_TABLE}
       METADATA_TABLE: ${METADATA_TABLE}
       WOJEWODZTWA_TABLE: ${WOJEWODZTWA_TABLE}
@@ -69,7 +69,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
