@@ -70,13 +70,10 @@ def hash_attributes_vectorized(gdf: gpd.GeoDataFrame, exclude_columns: list[str]
     hash_data = []
     for col in columns:
         if col == 'geometry':
-            # Geometry is already rounded in fetch_and_save.py, just use WKT
             hash_data.append(df[col].apply(lambda geom: geom.wkt if hasattr(geom, 'wkt') else str(geom)))
         elif col == 'rok_wykonania':
-            # Integer column - ALWAYS format as integer string
             hash_data.append(df[col].apply(lambda x: 'NULL' if pd.isna(x) else str(int(x))))
         elif col == 'charakterystyka_przestrzenna':
-            # Float column - format whole numbers as integers, otherwise 2 decimals
             def fmt_char(x):
                 if pd.isna(x):
                     return 'NULL'
@@ -86,7 +83,6 @@ def hash_attributes_vectorized(gdf: gpd.GeoDataFrame, exclude_columns: list[str]
                 return f"{x:.2f}"
             hash_data.append(df[col].apply(fmt_char))
         elif pd.api.types.is_numeric_dtype(df[col]):
-            # Other numeric columns - convert to float first, then format
             def fmt_num(x):
                 if pd.isna(x):
                     return 'NULL'
@@ -99,15 +95,9 @@ def hash_attributes_vectorized(gdf: gpd.GeoDataFrame, exclude_columns: list[str]
             hash_data.append(df[col].fillna('NULL').astype(str).str.strip())
     
     combined = pd.DataFrame(hash_data).T
-    combined.columns = columns  # Ensure column names are set
+    combined.columns = columns
     hash_strings = combined.apply(lambda row: b"|".join(
         r if isinstance(r, bytes) else str(r).encode("utf-8") for r in row
     ), axis=1)
-    
-    # DEBUG: Print sample hash strings for verification
-    if len(hash_strings) > 0:
-        print(f"  [HASH DEBUG] Sample hash string (record 0): {hash_strings.iloc[0][:150]}...")
-        if len(hash_strings) > 100:
-            print(f"  [HASH DEBUG] Sample hash string (record 100): {hash_strings.iloc[100][:150]}...")
     
     return hash_strings.apply(lambda x: hashlib.sha256(x).hexdigest())

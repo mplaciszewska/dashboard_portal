@@ -31,6 +31,50 @@ class WFSFetcher:
             time.sleep(self.request_delay)
             
         return layers
+    
+    def get_feature_count(self, layer: str) -> int:
+        """
+        Pobiera łączną liczbę obiektów w warstwie.
+        """
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typename": layer,
+            "resultType": "hits"
+        }
+        
+        try:
+            response = requests.get(self.wfs_url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            root = ET.fromstring(response.content)
+
+            number_matched = root.attrib.get('numberMatched')
+            if number_matched:
+                count = int(number_matched)
+                print(f"  Layer '{layer}' has {count:,} features.")
+                
+                if self.request_delay > 0:
+                    time.sleep(self.request_delay)
+                
+                return count
+            
+            number_of_features = root.attrib.get('numberOfFeatures')
+            if number_of_features:
+                count = int(number_of_features)
+                print(f"  Layer '{layer}' has {count:,} features.")
+                
+                if self.request_delay > 0:
+                    time.sleep(self.request_delay)
+                
+                return count
+            
+            print(f"  Warning: Could not determine feature count for layer '{layer}'")
+            return 0
+            
+        except Exception as e:
+            print(f"  Error getting feature count for '{layer}': {e}")
+            return 0
 
     def fetch_layer_by_bbox(self, layer: str, bbox: tuple[float, float, float, float] | None = None) -> gpd.GeoDataFrame:
         params = {

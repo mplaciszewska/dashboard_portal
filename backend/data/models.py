@@ -6,9 +6,10 @@ class PolandBbox2180:
     miny: int = 95_000
     maxx: int = 825_000
     maxy: int = 905_000
-    step: int = 50_000
+    step: int = 35_000
 
-    def generate_bboxes(self):
+    def generate_bboxes(self, custom_step: int | None = None):
+        step = custom_step if custom_step is not None else self.step
         bboxes = []
         x = self.minx
         while x < self.maxx:
@@ -17,12 +18,21 @@ class PolandBbox2180:
                 bbox = (
                     x,
                     y,
-                    min(x + self.step, self.maxx),
-                    min(y + self.step, self.maxy)
+                    min(x + step, self.maxx),
+                    min(y + step, self.maxy)
                 )
                 bboxes.append(bbox)
-                y += self.step
-            x += self.step
+                y += step
+            x += step
         return bboxes
+    
+    @staticmethod
+    def calculate_optimal_step(feature_count: int, default_step: int = 35_000) -> int:
+        if feature_count < 300_000:
+            return 100_000
+        elif feature_count < 800_000:
+            return 50_000
+        else:
+            return default_step
 
     
