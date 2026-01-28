@@ -1,6 +1,5 @@
 import time
 import os
-import re
 import pandas as pd
 import geopandas as gpd
 from dotenv import load_dotenv
@@ -27,31 +26,6 @@ photo_table = os.getenv("PHOTO_TABLE", "zdjecia_lotnicze")
 metadata_table = os.getenv("METADATA_TABLE", "metadane")
 
 # python -m backend.data.fetch_and_save
-
-def extract_year_range_from_layer(layer_name: str) -> tuple[int, int] | None:
-    match = re.search(r'(\d{4})-(\d{4})', layer_name)
-    if match:
-        return (int(match.group(1)), int(match.group(2)))
-    
-    match = re.search(r'(\d{4})', layer_name)
-    if match:
-        year = int(match.group(1))
-        return (year, year)
-    
-    return None
-
-def count_records_in_db(saver: PostgresSaver, table_name: str, year_start: int, year_end: int) -> int:
-    try:
-        with saver.engine.connect() as conn:
-            result = conn.execute(
-                text(f"SELECT COUNT(*) FROM {table_name} WHERE rok_wykonania BETWEEN :year_start AND :year_end"),
-                {"year_start": year_start, "year_end": year_end}
-            )
-            count = result.scalar()
-            return count if count else 0
-    except Exception as e:
-        print(f"  Error counting records for years {year_start}-{year_end}: {e}")
-        return 0
 
 def fetch_bbox_parallel(
     fetcher: WFSFetcher,
@@ -206,19 +180,26 @@ def main():
             print(f"[WARNING] Layer '{layer}' has 0 features or count unavailable, skipping...")
             continue
         
-        year_range = extract_year_range_from_layer(layer)
+        year_range = fetcher.extract_year_range_from_layer(layer)
         if year_range:
             year_start, year_end = year_range
             year_display = f"{year_start}-{year_end}" if year_start != year_end else str(year_start)
-            existing_count = count_records_in_db(saver, photo_table, year_start, year_end)
+            existing_count = saver.count_records_in_db(photo_table, year_start, year_end)
             print(f"Database already has {existing_count:,} records for layer {layer}")
             
             if existing_count == expected_count:
                 print(f"Layer already complete in database, skipping fetch")
                 elapsed = time.time() - start_time
                 continue
-            elif existing_count > 0:
-                print(f"Partial data exists ({existing_count:,}/{expected_count:,}), fetching missing records...")
+            elif existing_count > expected_count:
+                print(f"[WARNING] Database has MORE records than expected ({existing_count:,} > {expected_count:,})")
+                print(f"          This might indicate data corruption or duplicate entries")
+                print(f"          Skipping fetch - consider manual cleanup if needed")
+                elapsed = time.time() - start_time
+                continue
+            else:
+                missing = expected_count - existing_count
+                print(f"Partial data exists ({existing_count:,}/{expected_count:,}), missing {missing:,} records, fetching...")
         
         bbox_generator = PolandBbox2180()
         optimal_step = bbox_generator.calculate_optimal_step(expected_count)
@@ -297,7 +278,7 @@ def main():
             print(f"Saving {len(full_gdf)} records to database...")
             
             chunk_size = 10000
-
+            layer_inserted_count = 0
 
             if len(full_gdf) > chunk_size:
                 print(f"Processing in chunks of {chunk_size} records...")
@@ -305,11 +286,89 @@ def main():
                     chunk = full_gdf.iloc[i:i+chunk_size]
                     print(f"Processing chunk {i//chunk_size + 1}/{(len(full_gdf)-1)//chunk_size + 1}")
                     inserted = saver.append_unique_chunk_sql(chunk, table_name=photo_table)
-                    new_records_count += inserted
+                    layer_inserted_count += inserted
             else:
-                new_records_count = saver.append_unique_chunk_sql(full_gdf, table_name=photo_table)
+                layer_inserted_count = saver.append_unique_chunk_sql(full_gdf, table_name=photo_table)
 
+            new_records_count += layer_inserted_count
             
+            if year_range:
+                year_start, year_end = year_range
+                final_count_in_db = saver.count_records_in_db(photo_table, year_start, year_end)
+                
+                if final_count_in_db != expected_count:
+                    expected_inserted = expected_count - existing_count
+                    print(f"\n[ERROR] Data integrity check failed!")
+                    print(f"  Expected to insert: {expected_inserted:,} records")
+                    print(f"  Actually inserted:  {layer_inserted_count:,} records")
+                    print(f"  Final count in DB:  {final_count_in_db:,} (expected {expected_count:,})")
+                    print(f"\n[FALLBACK] Deleting all records for years {year_display} and re-fetching...")
+                    
+                    saver.delete_records_for_year_range(photo_table, year_start, year_end)
+                    
+                    new_records_count -= layer_inserted_count
+                    
+                    print(f"\n[RETRY] Re-fetching layer {layer}...")
+                    layer_gdfs_retry = []
+                    
+                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_to_bbox = {
+                            executor.submit(fetch_bbox_parallel, fetcher, layer, bbox): bbox 
+                            for bbox in bboxes
+                        }
+                        
+                        for future in as_completed(future_to_bbox):
+                            bbox = future_to_bbox[future]
+                            try:
+                                gdf = future.result()
+                                if gdf is not None:
+                                    layer_gdfs_retry.append(gdf)
+                            except Exception as e:
+                                print(f"  Failed to process bbox {bbox}: {e}")
+                    
+                    if layer_gdfs_retry:
+                        print(f"  Combining {len(layer_gdfs_retry)} bbox results...")
+                        full_gdf_retry = pd.concat(layer_gdfs_retry, ignore_index=True)
+                        
+                        for col, dtype in dtype_mapping.items():
+                            if col in full_gdf_retry.columns:
+                                full_gdf_retry[col] = full_gdf_retry[col].astype(dtype)
+                        
+                        full_gdf_retry['geometry'] = full_gdf_retry['geometry'].apply(normalize_geometry)
+                        del layer_gdfs_retry
+                        
+                        print(f"  Computing hashes for {len(full_gdf_retry)} records...")
+                        full_gdf_retry['uid'] = hash_attributes_vectorized(full_gdf_retry, exclude_columns=exclude_from_hash)
+                        full_gdf_retry = deduplicate_gdf(full_gdf_retry, hash_column='uid')
+                        
+                        retry_fetched_count = len(full_gdf_retry)
+                        print(f"  After deduplication: {retry_fetched_count:,} unique records")
+                        
+                        print(f"  Saving {len(full_gdf_retry)} retry records to database...")
+                        retry_inserted_count = 0
+                        if len(full_gdf_retry) > chunk_size:
+                            print(f"  Processing in chunks of {chunk_size} records...")
+                            for i in range(0, len(full_gdf_retry), chunk_size):
+                                chunk = full_gdf_retry.iloc[i:i+chunk_size]
+                                print(f"  Processing retry chunk {i//chunk_size + 1}/{(len(full_gdf_retry)-1)//chunk_size + 1}")
+                                inserted = saver.append_unique_chunk_sql(chunk, table_name=photo_table)
+                                retry_inserted_count += inserted
+                        else:
+                            retry_inserted_count = saver.append_unique_chunk_sql(full_gdf_retry, table_name=photo_table)
+                        
+                        new_records_count += retry_inserted_count
+                        
+                        final_retry_count = saver.count_records_in_db(photo_table, year_start, year_end)
+                        if final_retry_count == expected_count:
+                            print(f"  [SUCCESS] Retry successful! Database now has {final_retry_count:,} records")
+                        else:
+                            print(f"  [WARNING] Retry completed but count still mismatched: {final_retry_count:,}/{expected_count:,}")
+                    else:
+                        print(f"  [ERROR] No data retrieved during retry!")
+                else:
+                    print(f"  [SUCCESS] Data integrity check passed: {final_count_in_db:,} records in database")
+            
+
             elapsed = time.time() - start_time
             print(f"Layer {layer} completed in {elapsed:.2f} seconds")
         else:

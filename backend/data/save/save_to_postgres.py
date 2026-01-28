@@ -18,6 +18,40 @@ class PostgresSaver:
             }
         )
     
+    def count_records_in_db(self, table_name: str, year_start: int, year_end: int) -> int:
+        """
+        Zlicza rekordy w bazie dla zakresu lat.
+        """
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    text(f"SELECT COUNT(*) FROM {table_name} WHERE rok_wykonania BETWEEN :year_start AND :year_end"),
+                    {"year_start": year_start, "year_end": year_end}
+                )
+                count = result.scalar()
+                return count if count else 0
+        except Exception as e:
+            print(f"  Error counting records for years {year_start}-{year_end}: {e}")
+            return 0
+    
+    def delete_records_for_year_range(self, table_name: str, year_start: int, year_end: int) -> int:
+        """
+        Usuwa wszystkie rekordy dla danego zakresu lat z bazy.
+        Zwraca liczbę usuniętych rekordów.
+        """
+        try:
+            with self.engine.begin() as conn:
+                result = conn.execute(
+                    text(f"DELETE FROM {table_name} WHERE rok_wykonania BETWEEN :year_start AND :year_end"),
+                    {"year_start": year_start, "year_end": year_end}
+                )
+                deleted_count = result.rowcount
+                print(f"  Deleted {deleted_count:,} records for years {year_start}-{year_end}")
+                return deleted_count
+        except Exception as e:
+            print(f"  Error deleting records for years {year_start}-{year_end}: {e}")
+            return 0
+    
     def append_unique_chunk_sql(self, gdf_chunk: gpd.GeoDataFrame, table_name: str) -> int:
         gdf_chunk = gdf_chunk.reset_index(drop=True)
         

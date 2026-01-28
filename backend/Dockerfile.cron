@@ -18,8 +18,13 @@ COPY . .
 
 ENV PYTHONPATH=/workspace
 
-# Run daily at 18:00 (6:00 PM)
-RUN echo "0 18 * * * cd /workspace/backend && /usr/local/bin/python -u -m backend.cron_job >> /var/log/cron.log 2>&1" > /etc/cron.d/db-update-cron
+RUN echo '#!/bin/bash\n\
+source /etc/environment\n\
+cd /workspace && /usr/local/bin/python -u -m backend.cron_job >> /var/log/cron.log 2>&1\n' > /workspace/run_cron_job.sh && \
+    chmod +x /workspace/run_cron_job.sh
+
+# Run every 2 weeks on Monday at 22:00 UTC (23:00 local time UTC+1)
+RUN echo "0 22 * * 1 [ \$(expr \$(date +\\%s) / 1209600 \\% 2) -eq 0 ] && /workspace/run_cron_job.sh" > /etc/cron.d/db-update-cron
 
 RUN chmod 0644 /etc/cron.d/db-update-cron
 
@@ -27,4 +32,9 @@ RUN crontab /etc/cron.d/db-update-cron
 
 RUN touch /var/log/cron.log
 
-CMD cron && tail -f /var/log/cron.log
+# Create startup script that exports env vars to /etc/environment for cron
+RUN echo '#!/bin/bash\n\
+printenv | grep -v "no_proxy" >> /etc/environment\n\
+cron && tail -f /var/log/cron.log\n' > /start.sh && chmod +x /start.sh
+
+CMD ["/start.sh"]

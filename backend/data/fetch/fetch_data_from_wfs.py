@@ -4,11 +4,8 @@ import time
 import xml.etree.ElementTree as ET
 import tempfile
 import os
-import tempfile
-import requests
-import geopandas as gpd
+import re
 import fiona
-import time
 
 
 class WFSFetcher:
@@ -75,6 +72,22 @@ class WFSFetcher:
         except Exception as e:
             print(f"  Error getting feature count for '{layer}': {e}")
             return 0
+    
+    def extract_year_range_from_layer(self, layer_name: str) -> tuple[int, int] | None:
+        """
+        Ekstrakcja zakresu lat z nazwy warstwy WFS.
+        Przykład: 'gugik:SkorowidzZdjecLotniczych1951-1955' -> (1951, 1955)
+        """
+        match = re.search(r'(\d{4})-(\d{4})', layer_name)
+        if match:
+            return (int(match.group(1)), int(match.group(2)))
+        
+        match = re.search(r'(\d{4})', layer_name)
+        if match:
+            year = int(match.group(1))
+            return (year, year)
+        
+        return None
 
     def fetch_layer_by_bbox(self, layer: str, bbox: tuple[float, float, float, float] | None = None) -> gpd.GeoDataFrame:
         params = {

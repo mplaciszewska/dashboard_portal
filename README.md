@@ -15,19 +15,15 @@ docker compose up -d
 
 4. Restore database and tiles backup
 ```
-docker cp backup.sql postgis:/backup.sql
+docker cp backup_good.sql postgis:/backup.sql
 docker cp "path_to_tiles\." backend:/workspace/tiles/
-docker exec -i postgis psql -U postgres -d  {postgres_db} -f /backup.sql;
+docker exec -i postgis psql -U postgres -d  dashboard_portal_db -f /backup.sql;
 ```
 
 Frontend app available at:  http://localhost:3000
 Backend endpoints available at: http://localhost:8000/api
 
-
-## Useful
-
-1. Run cron job for updating database manually
-
+5. Run cron job for updating the database manually (Cron job rus every 2 weeks at 22:00)
 ```
 docker exec cron /usr/local/bin/python -u -m backend.cron_job
 ```
